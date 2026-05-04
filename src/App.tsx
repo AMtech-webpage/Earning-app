@@ -574,23 +574,23 @@ import { AuthPage } from './components/Auth';
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  if (!isAuthenticated) {
-    return <AuthPage onLogin={() => setIsAuthenticated(true)} />;
-  }
-
   return (
     <Router>
-      <Layout>
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/leaderboard" element={<Leaderboard />} />
-          <Route path="/earn" element={<EarnPage />} />
-          <Route path="/withdraw" element={<WithdrawPage />} />
-          <Route path="/bonus" element={<BonusPage />} />
-          <Route path="/articles" element={<ArticlesPage />} />
-          <Route path="/legal" element={<LegalPage />} />
-        </Routes>
-      </Layout>
+      {!isAuthenticated ? (
+        <AuthPage onLogin={() => setIsAuthenticated(true)} />
+      ) : (
+        <Layout>
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/leaderboard" element={<Leaderboard />} />
+            <Route path="/earn" element={<EarnPage />} />
+            <Route path="/withdraw" element={<WithdrawPage />} />
+            <Route path="/bonus" element={<BonusPage />} />
+            <Route path="/articles" element={<ArticlesPage />} />
+            <Route path="/legal" element={<LegalPage />} />
+          </Routes>
+        </Layout>
+      )}
     </Router>
   );
 }

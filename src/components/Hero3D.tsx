@@ -1,6 +1,6 @@
 import { Canvas, useFrame } from '@react-three/fiber';
 import { Float, MeshDistortMaterial, PerspectiveCamera, OrbitControls, Points, PointMaterial } from '@react-three/drei';
-import { useRef, useMemo } from 'react';
+import { useRef, useMemo, Suspense } from 'react';
 import * as THREE from 'three';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -81,17 +81,41 @@ const Trophy = () => {
 
 export const Hero3D = ({ particlesOnly = false }: { particlesOnly?: boolean }) => {
   return (
-    <div className={cn("absolute inset-0 z-0", particlesOnly ? "opacity-30" : "opacity-60")}>
-      <Suspense fallback={null}>
-        <Canvas>
-          <PerspectiveCamera makeDefault position={[0, 0, 5]} />
-          {!particlesOnly && <OrbitControls enableZoom={false} autoRotate autoRotateSpeed={0.5} />}
-          <ambientLight intensity={0.5} />
-          {!particlesOnly && <spotLight position={[10, 10, 10]} angle={0.15} penumbra={1} intensity={2} />}
-          <pointLight position={[-10, -10, -10]} color="#0062FF" intensity={1} />
-          {particlesOnly ? <ParticleCloud /> : <Trophy />}
-        </Canvas>
-      </Suspense>
+    <div className={cn("absolute inset-0 z-0 overflow-hidden pointer-events-none")}>
+      {/* Dynamic Background Glows */}
+      <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-primary/20 rounded-full blur-[120px] animate-pulse"></div>
+      <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-cyan-500/10 rounded-full blur-[100px] animate-pulse delay-700"></div>
+      
+      {!particlesOnly && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="relative">
+            {/* Central Glowing Orb */}
+            <div className="w-64 h-64 bg-gradient-to-br from-primary to-cyan-500 rounded-full blur-3xl opacity-20 animate-pulse"></div>
+            {/* Spinning Rings (CSS) */}
+            <div className="absolute inset-0 border border-primary/20 rounded-full scale-150 animate-[spin_20s_linear_infinite]"></div>
+            <div className="absolute inset-0 border border-cyan-500/10 rounded-full scale-[1.8] animate-[spin_30s_linear_infinite_reverse]"></div>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Particles (CSS) */}
+      <div className="absolute inset-0 opacity-30">
+        {[...Array(20)].map((_, i) => (
+          <div 
+            key={i}
+            className="absolute bg-white rounded-full animate-float"
+            style={{
+              width: Math.random() * 3 + 'px',
+              height: Math.random() * 3 + 'px',
+              left: Math.random() * 100 + '%',
+              top: Math.random() * 100 + '%',
+              opacity: Math.random() * 0.5 + 0.2,
+              animationDuration: (Math.random() * 10 + 10) + 's',
+              animationDelay: (Math.random() * 5) + 's'
+            }}
+          />
+        ))}
+      </div>
     </div>
   );
 };
