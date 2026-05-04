@@ -1,0 +1,96 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "User account data, balance, and stats.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "coins": { "type": "number", "description": "Platform currency" },
+        "usdBalance": { "type": "number", "description": "USD equivalent" },
+        "isVerified": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "lifetimeEarnings": { "type": "number" },
+        "gamesPlayed": { "type": "integer" }
+      },
+      "required": ["uid", "coins", "usdBalance"]
+    },
+    "Completion": {
+      "title": "Task Completion",
+      "description": "Log of a user completing an offer or game.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "partnerId": { "type": "string" },
+        "taskId": { "type": "string" },
+        "amount": { "type": "number" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["pending", "completed", "rejected"] }
+      },
+      "required": ["userId", "partnerId", "amount", "timestamp"]
+    },
+    "Withdrawal": {
+      "title": "Cash Out Request",
+      "description": "User withdrawal request.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "amount": { "type": "number" },
+        "method": { "type": "string", "enum": ["BITCOIN", "BITCOIN_CASH", "BANK_TRANSFER"] },
+        "address": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "processed", "rejected"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "amount", "method", "status", "createdAt"]
+    },
+    "Leaderboard": {
+      "title": "Leaderboard Slot",
+      "description": "Ranking data for a specific period/category.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "value": { "type": "number" },
+        "rank": { "type": "integer" },
+        "category": { "type": "string", "enum": ["weekly_earners", "most_played", "highest_payout"] }
+      }
+    },
+    "Article": {
+      "title": "Blog Article",
+      "description": "Educational or promotional content.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "author": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "/completions/{completionId}": {
+      "schema": "Completion",
+      "description": "Task history"
+    },
+    "/withdrawals/{withdrawalId}": {
+      "schema": "Withdrawal",
+      "description": "Payment requests"
+    },
+    "/leaderboards/{category}/entries/{userId}": {
+      "schema": "Leaderboard",
+      "description": "Real-time leaderboard ranking"
+    },
+    "/articles/{articleId}": {
+      "schema": "Article",
+      "description": "Blog posts"
+    }
+  }
+}
