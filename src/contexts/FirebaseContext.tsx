@@ -73,86 +73,72 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setUser(firebaseUser);
         
         if (firebaseUser) {
-          // Listen to profile
+          // Setup profile reference
           const profileRef = doc(db, 'users', firebaseUser.uid);
           
-          // Check if profile exists, if not create it
-          let snap;
-          try {
-            // Force server check to avoid "offline" cache issues if they exist
-            snap = await getDoc(profileRef);
-          } catch (e: any) {
-            console.error("Error fetching profile", e);
-            const isOffline = e?.message?.includes('offline') || e?.code === 'unavailable';
-            if (isOffline) {
-              setAuthError("Network issue: Unable to reach Firebase. Please check your connection.");
-            }
-          }
-
-          if (snap && !snap.exists()) {
-            const referrerId = localStorage.getItem('dgamers_ref');
-            
-            let baseUsername = firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Gamer';
-            if (baseUsername.length < 3) baseUsername = `${baseUsername}_player`;
-            if (baseUsername.length > 32) baseUsername = baseUsername.substring(0, 32);
-
-            const newProfile: any = {
-              uid: firebaseUser.uid,
-              username: baseUsername,
-              displayName: firebaseUser.displayName || baseUsername,
-              email: firebaseUser.email || '',
-              avatarUrl: `https://api.dicebear.com/7.x/pixel-art/svg?seed=${baseUsername}`,
-              coins: 0,
-              tier: 'bronze',
-              stats: {
-                gamesPlayed: 0,
-                highestStreak: 0,
-                totalQuests: 0
-              },
-              createdAt: serverTimestamp(),
-              lastLoginAt: serverTimestamp(),
-              isVerified: firebaseUser.emailVerified || false,
-              country: 'Nigeria' 
-            };
-
-            if (referrerId && referrerId !== firebaseUser.uid) {
-              newProfile.referrerId = referrerId;
-            }
-            
-            try {
-              const batch = writeBatch(db);
-              batch.set(profileRef, newProfile);
-              batch.set(doc(db, 'usernames', baseUsername.toLowerCase()), { userId: firebaseUser.uid });
-              await batch.commit();
-              // Clear used ref
-              localStorage.removeItem('dgamers_ref');
-            } catch (error) {
-              console.error("Failed to create profile", error);
-              // We don't use handleFirestoreError here because it throws
-            }
-          } else if (snap && snap.exists()) {
-            // Update last login
-            try {
-              await setDoc(profileRef, { lastLoginAt: serverTimestamp() }, { merge: true });
-            } catch (error) {
-              console.warn("Failed to update last login", error);
-            }
-          }
-
-          // Start listener
-          const unsubProfile = onSnapshot(profileRef, (docSnap) => {
+          // Use onSnapshot for reactive profile loading
+          const unsubProfile = onSnapshot(profileRef, async (docSnap) => {
             if (docSnap.exists()) {
               setProfile(docSnap.data() as UserProfile);
+              setLoading(false); // Success!
+            } else {
+              // Profile doesn't exist yet, need to create it
+              console.log("Profile does not exist, creating...");
+              const referrerId = localStorage.getItem('dgamers_ref');
+              
+              let baseUsername = firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Gamer';
+              if (baseUsername.length < 3) baseUsername = `${baseUsername}_player`;
+              if (baseUsername.length > 32) baseUsername = baseUsername.substring(0, 32);
+
+              const newProfile: any = {
+                uid: firebaseUser.uid,
+                username: baseUsername,
+                displayName: firebaseUser.displayName || baseUsername,
+                email: firebaseUser.email || '',
+                avatarUrl: `https://api.dicebear.com/7.x/pixel-art/svg?seed=${baseUsername}`,
+                coins: 0,
+                tier: 'bronze',
+                stats: {
+                  gamesPlayed: 0,
+                  highestStreak: 0,
+                  totalQuests: 0
+                },
+                createdAt: serverTimestamp(),
+                lastLoginAt: serverTimestamp(),
+                isVerified: firebaseUser.emailVerified || false,
+                country: 'Nigeria' 
+              };
+
+              if (referrerId && referrerId !== firebaseUser.uid) {
+                newProfile.referrerId = referrerId;
+              }
+              
+              try {
+                const batch = writeBatch(db);
+                batch.set(profileRef, newProfile);
+                batch.set(doc(db, 'usernames', baseUsername.toLowerCase()), { userId: firebaseUser.uid });
+                await batch.commit();
+                localStorage.removeItem('dgamers_ref');
+              } catch (error) {
+                console.error("Failed to create profile", error);
+              }
             }
-          }, (error) => {
+          }, (error: any) => {
             console.warn("Profile listener error", error);
+            const isOffline = error?.message?.includes('offline') || error?.code === 'unavailable';
+            if (isOffline) {
+              setAuthError("Network issue: Unable to reach Firebase. Working in offline mode...");
+            }
+            // Even with error, we set loading to false so the user can see something
+            setLoading(false);
           });
 
-          // Note: we can't easily return unsubProfile here because this is an async callback
-          // Instead we store it in a ref or similar if we really need cleanup, 
-          // but for a provider it's usually okay until the provider unmounts (which is never)
+          // Store the unsubscribe function to clean up when auth state changes
+          // or component unmounts. For a global provider, we just want to unsub previous one.
+          return () => unsubProfile();
         } else {
           setProfile(null);
+          setLoading(false);
         }
       } catch (err) {
         console.error("onAuthStateChanged error", err);

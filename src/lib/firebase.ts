@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
-import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
+import { initializeFirestore, doc, getDocFromServer } from 'firebase/firestore';
 import firebaseConfig from '@/firebase-applet-config.json';
 
 if (!firebaseConfig || !firebaseConfig.apiKey) {
@@ -20,33 +20,23 @@ const firebaseConfigData = {
 
 const app = initializeApp(firebaseConfigData);
 
-// If firestoreDatabaseId is "(default)", we should not pass it to getFirestore
+// If firestoreDatabaseId is "(default)", we should not pass it to initializeFirestore
 const dbId = firebaseConfig.firestoreDatabaseId === '(default)' ? undefined : firebaseConfig.firestoreDatabaseId;
-export const db = getFirestore(app, dbId); 
+
+// Initialize Firestore with settings to resolve "offline" issues in iframes
+export const db = initializeFirestore(app, {
+  experimentalForceLongPolling: true, // Forces long-polling (useful in many container/iframe setups)
+}, dbId);
+
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 
-// Connection test - less aggressive
-async function testConnection() {
-  try {
-    // Only test if we are not in a build environment
-    if (typeof window !== 'undefined') {
-      await getDocFromServer(doc(db, 'test', 'connection'));
-      console.log("Firebase connection established successfully.");
-    }
-  } catch (error: any) {
-    // We ignore 404/not-found but check for "offline" or "api-key-not-valid"
-    const message = error?.message || String(error);
-    if (message.includes('the client is offline')) {
-      console.error("Firebase is offline. Please check your internet connection.");
-    } else if (message.includes('auth/api-key-not-valid')) {
-      console.error("Firebase API Key is invalid. Please check your firebase-applet-config.json.");
-    } else {
-      console.warn("Firebase connection test notice:", message);
-    }
-  }
+// Simple connection check that doesn't spam the console if it fails
+if (typeof window !== 'undefined') {
+  getDocFromServer(doc(db, 'test', 'connection')).catch(() => {
+    // Silently handle - we don't want to alert if user is just starting up
+  });
 }
-testConnection();
 
 export enum OperationType {
   CREATE = 'create',
