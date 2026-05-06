@@ -31,23 +31,26 @@ service cloud.firestore {
     }
 
     function isValidUser(data) {
-      return data.uid == request.auth.uid 
+      return data.uid is string
         && data.username is string && data.username.size() >= 2 && data.username.size() <= 64
         && data.email is string && data.email.size() <= 128
         && data.coins is number && data.coins >= 0
         && data.tier in ['bronze', 'silver', 'gold', 'platinum']
-        && (data.avatarUrl is string ? data.avatarUrl.size() <= 500 : true)
+        && (data.avatarUrl is string ? data.avatarUrl.size() <= 1000 : true)
         && (data.displayName is string ? data.displayName.size() <= 64 : true)
         && (data.bio is string ? data.bio.size() <= 500 : true)
         && (data.stats is map)
+        && (data.referrerId is string ? data.referrerId.size() <= 128 : true)
+        && (data.referrerName is string ? data.referrerName.size() <= 128 : true)
+        && (data.hasWithdrawn is bool ? true : true)
         && data.createdAt is timestamp;
     }
 
     function isValidTransaction(data) {
-      return data.userId == request.auth.uid
+      return data.userId is string
         && data.amount is number
         && data.coins is number
-        && data.type in ['earn', 'withdraw', 'bonus']
+        && data.type in ['earn', 'withdraw', 'bonus', 'referral', 'referral_bonus']
         && data.status in ['pending', 'completed', 'failed']
         && (data.description is string ? data.description.size() <= 200 : true)
         && data.createdAt is timestamp;
@@ -70,21 +73,22 @@ service cloud.firestore {
         && incoming().tier == 'bronze'
         && incoming().coins == 0;
 
-      allow update: if isOwner(userId) && isValidId(userId)
+      allow update: if (isOwner(userId) || (isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.referrerId == userId))
+        && isValidId(userId)
         && isValidUser(incoming())
         && (
-          (incoming().diff(existing()).affectedKeys().hasOnly(['username', 'displayName', 'avatarUrl', 'bio', 'stats', 'lastLoginAt', 'isVerified', 'country', 'coins']))
+          (incoming().diff(existing()).affectedKeys().hasOnly(['username', 'displayName', 'avatarUrl', 'bio', 'stats', 'lastLoginAt', 'isVerified', 'country', 'coins', 'hasWithdrawn']))
         )
-        && (incoming().username != existing().username ? existsAfter(/databases/$(database)/documents/usernames/$(incoming().username)) : true)
         && incoming().uid == existing().uid
         && incoming().createdAt == existing().createdAt;
       
       match /transactions/{transactionId} {
         allow read: if isOwner(userId) && isValidId(transactionId);
-        allow create: if isOwner(userId) && isValidId(transactionId)
+        allow create: if (isOwner(userId) || (isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.referrerId == userId))
+          && isValidId(transactionId)
           && isValidTransaction(incoming())
           && incoming().createdAt == request.time
-          && incoming().status == 'pending';
+          && (incoming().type in ['referral', 'referral_bonus'] ? incoming().status == 'completed' : incoming().status == 'pending');
         allow update: if isOwner(userId) && isValidId(transactionId)
           && isValidTransaction(incoming())
           && (existing().status == 'pending' && incoming().status == 'failed' && incoming().diff(existing()).affectedKeys().hasOnly(['status']))

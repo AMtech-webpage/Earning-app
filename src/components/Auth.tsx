@@ -36,6 +36,16 @@ export const AuthPage = () => {
     clearAuthError 
   } = useFirebase();
 
+  const handleRefCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setRefCode(val);
+    if (val) {
+      localStorage.setItem('dgamers_ref', val);
+    } else {
+      localStorage.removeItem('dgamers_ref');
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSimulating(true);
@@ -52,7 +62,6 @@ export const AuthPage = () => {
       }
     } else {
       try {
-        if (refCode) localStorage.setItem('dgamers_ref', refCode);
         await signUpWithEmail(email, password, usernameInput);
       } catch (err) {
         // Error handled in context
@@ -203,34 +212,41 @@ export const AuthPage = () => {
                 </div>
 
                 {!isLogin && (
-                  <div className="pt-2">
-                     <button 
-                      type="button"
-                      disabled={isAnyLoading}
-                      onClick={() => setShowBonusField(!showBonusField)}
-                      className="text-[10px] text-zinc-600 font-bold uppercase tracking-widest hover:text-primary transition-colors disabled:opacity-50"
-                     >
-                       {showBonusField ? '- Hide Referral' : '+ Have a Referral Code?'}
-                     </button>
-                     <AnimatePresence>
+                  <div className="pt-4 border-t border-white/5 space-y-4">
+                    <div className="flex items-center justify-between px-1">
+                      <label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em]">Referral System</label>
+                      <button 
+                        type="button"
+                        onClick={() => setShowBonusField(!showBonusField)}
+                        className="text-[10px] text-primary font-black uppercase tracking-widest hover:underline"
+                      >
+                        {showBonusField ? 'CANCEL' : 'ADD CODE'}
+                      </button>
+                    </div>
+                    
+                    <AnimatePresence>
                       {showBonusField && (
                         <motion.div
                           initial={{ height: 0, opacity: 0 }}
                           animate={{ height: 'auto', opacity: 1 }}
                           exit={{ height: 0, opacity: 0 }}
-                          className="overflow-hidden mt-2"
+                          className="overflow-hidden space-y-2"
                         >
-                          <input 
-                            type="text" 
-                            value={refCode}
-                            onChange={(e) => setRefCode(e.target.value)}
-                            disabled={isAnyLoading}
-                            placeholder="ELITE_REFERRAL"
-                            className="w-full bg-primary/5 border border-primary/20 rounded-xl py-3 px-4 text-xs focus:outline-none focus:border-primary uppercase font-mono tracking-widest disabled:opacity-50 placeholder:text-zinc-800"
-                          />
+                          <p className="text-[10px] text-zinc-600 font-medium px-1">Enter your friend's unique ID to unlock elite bonuses and support them.</p>
+                          <div className="relative">
+                            <Users className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-primary" />
+                            <input 
+                              type="text" 
+                              value={refCode}
+                              onChange={handleRefCodeChange}
+                              disabled={isAnyLoading}
+                              placeholder="ELITE_REFERRAL_ID"
+                              className="w-full bg-primary/5 border border-primary/20 rounded-xl py-3 pl-12 pr-4 text-xs focus:outline-none focus:border-primary uppercase font-mono tracking-widest disabled:opacity-50 placeholder:text-zinc-800"
+                            />
+                          </div>
                         </motion.div>
                       )}
-                     </AnimatePresence>
+                    </AnimatePresence>
                   </div>
                 )}
 

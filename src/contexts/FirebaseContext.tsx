@@ -28,6 +28,8 @@ interface UserProfile {
     rank?: number;
   };
   referrerId?: string;
+  referrerName?: string;
+  hasWithdrawn?: boolean;
   createdAt: any;
   lastLoginAt: any;
   isVerified: boolean;
@@ -45,6 +47,7 @@ interface FirebaseContextType {
   signInWithEmail: (email: string, pass: string) => Promise<void>;
   logout: () => Promise<void>;
   awardCoins: (amount: number, description: string) => Promise<void>;
+  requestWithdrawal: (amount: number, method: string) => Promise<void>;
   updateProfileData: (data: Partial<UserProfile>) => Promise<void>;
   checkUsernameAvailability: (username: string) => Promise<boolean>;
   clearAuthError: () => void;
@@ -86,6 +89,18 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
               // Profile doesn't exist yet, need to create it
               console.log("Profile does not exist, creating...");
               const referrerId = localStorage.getItem('dgamers_ref');
+              let referrerUsername = null;
+
+              if (referrerId && referrerId !== firebaseUser.uid) {
+                try {
+                  const refSnap = await getDoc(doc(db, 'users', referrerId));
+                  if (refSnap.exists()) {
+                    referrerUsername = refSnap.data().username;
+                  }
+                } catch (e) {
+                  console.warn("Could not fetch referrer username", e);
+                }
+              }
               
               let baseUsername = firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Gamer';
               if (baseUsername.length < 3) baseUsername = `${baseUsername}_player`;
@@ -113,6 +128,9 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
               if (referrerId && referrerId !== firebaseUser.uid) {
                 newProfile.referrerId = referrerId;
+                if (referrerUsername) {
+                  newProfile.referrerName = referrerUsername;
+                }
               }
               
               try {
@@ -300,6 +318,69 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   };
 
+  const requestWithdrawal = async (amountInCoins: number, method: string) => {
+    if (!user || !profile) return;
+    if (profile.coins < amountInCoins) throw new Error("Insufficient balance.");
+
+    const profileRef = doc(db, 'users', user.uid);
+    const transactionId = crypto.randomUUID();
+    const withdrawActivityRef = doc(db, `users/${user.uid}/transactions`, transactionId);
+
+    try {
+      const batch = writeBatch(db);
+
+      // 1. Record the withdrawal
+      batch.set(withdrawActivityRef, {
+        userId: user.uid,
+        amount: amountInCoins / 1000,
+        coins: amountInCoins,
+        type: 'withdraw',
+        status: 'pending',
+        description: `Withdrawal via ${method}`,
+        createdAt: serverTimestamp()
+      });
+
+      // 2. Update user balance and withdrawal flag
+      const isFirstWithdrawal = !profile.hasWithdrawn;
+      batch.set(profileRef, {
+        coins: (profile.coins || 0) - amountInCoins,
+        hasWithdrawn: true,
+        lastLoginAt: serverTimestamp()
+      }, { merge: true });
+
+      // 3. Award Referral Bonus if first withdrawal
+      if (isFirstWithdrawal && profile.referrerId) {
+        const referralBonusAmount = 500; // Flat bonus for first withdrawal
+        const referrerRef = doc(db, 'users', profile.referrerId);
+        const referrerSnap = await getDoc(referrerRef);
+
+        if (referrerSnap.exists()) {
+          const bonusTransactionId = crypto.randomUUID();
+          const referrerBonusRef = doc(db, `users/${profile.referrerId}/transactions`, bonusTransactionId);
+
+          batch.set(referrerBonusRef, {
+            userId: profile.referrerId,
+            amount: referralBonusAmount / 1000,
+            coins: referralBonusAmount,
+            type: 'referral_bonus',
+            status: 'completed',
+            description: `Bonus for ${profile.username}'s first withdrawal`,
+            fromUser: profile.username,
+            createdAt: serverTimestamp()
+          });
+
+          batch.set(referrerRef, {
+            coins: (referrerSnap.data().coins || 0) + referralBonusAmount
+          }, { merge: true });
+        }
+      }
+
+      await batch.commit();
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, `users/${user.uid}/transactions`);
+    }
+  };
+
   const checkUsernameAvailability = async (username: string) => {
     if (username.length < 3) return false;
     const ref = doc(db, 'usernames', username.toLowerCase());
@@ -344,6 +425,7 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       signInWithEmail,
       logout, 
       awardCoins, 
+      requestWithdrawal,
       updateProfileData,
       checkUsernameAvailability,
       clearAuthError 

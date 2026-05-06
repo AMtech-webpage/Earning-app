@@ -40,8 +40,12 @@ async function startServer() {
     res.json({ status: "cleared", reviewDate: new Date() });
   });
 
+  const isProduction = process.env.NODE_ENV === "production";
+  console.log(`Starting server in ${isProduction ? "production" : "development"} mode...`);
+
   // Vite middleware for development
-  if (process.env.NODE_ENV !== "production") {
+  if (!isProduction) {
+    console.log("Initializing Vite middleware...");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
@@ -62,14 +66,27 @@ async function startServer() {
     });
   } else {
     const distPath = path.join(process.cwd(), "dist");
+    console.log(`Serving static files from ${distPath}`);
+    
+    // Safety check for dist/index.html
+    const indexPath = path.join(distPath, "index.html");
+    try {
+      await fs.access(indexPath);
+      console.log("index.html found in dist/");
+    } catch (err) {
+      console.error("CRITICAL ERROR: index.html not found in dist/ directory!");
+      console.error("Full path searched:", indexPath);
+    }
+
     app.use(express.static(distPath));
     app.get("*", (req, res) => {
-      res.sendFile(path.join(distPath, "index.html"));
+      res.sendFile(indexPath);
     });
   }
 
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running at http://localhost:${PORT}`);
+    console.log(`Server running at http://0.0.0.0:${PORT}`);
+    console.log(`Health check: http://0.0.0.0:${PORT}/api/health`);
   });
 }
 

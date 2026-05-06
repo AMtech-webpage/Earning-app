@@ -33,7 +33,9 @@ import {
   Send,
   Mail,
   ArrowRight,
-  ShieldAlert
+  ShieldAlert,
+  Phone,
+  AlertCircle
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -169,7 +171,7 @@ const Footer = () => {
               </div>
               <span className="font-display font-bold text-3xl tracking-tighter italic text-white uppercase">D<span className="text-primary">GAMERS</span></span>
             </Link>
-            <p className="text-zinc-500 text-sm leading-relaxed max-w-xs font-medium">
+            <p className="text-blue-400/80 text-sm leading-relaxed max-w-xs font-medium">
               The premier reward destination for elite Nigerian gamers. Earn real value for your time and skills.
             </p>
             <div className="flex items-center gap-4">
@@ -186,7 +188,7 @@ const Footer = () => {
             <ul className="space-y-4">
               {['Earn', 'Leaderboard', 'Withdraw', 'Referrals'].map((item) => (
                 <li key={item}>
-                  <Link to={`/${item.toLowerCase()}`} className="text-zinc-500 hover:text-primary transition-colors text-sm font-bold uppercase tracking-tight italic">
+                  <Link to={`/${item.toLowerCase()}`} className="text-blue-500/60 hover:text-primary transition-colors text-sm font-bold uppercase tracking-tight italic">
                     {item}
                   </Link>
                 </li>
@@ -204,7 +206,7 @@ const Footer = () => {
                 { label: 'Bonus Codes', path: '/bonus' }
               ].map((item) => (
                 <li key={item.label}>
-                  <Link to={item.path} className="text-zinc-500 hover:text-primary transition-colors text-sm font-bold uppercase tracking-tight italic">
+                  <Link to={item.path} className="text-blue-500/60 hover:text-primary transition-colors text-sm font-bold uppercase tracking-tight italic">
                     {item.label}
                   </Link>
                 </li>
@@ -228,8 +230,8 @@ const Footer = () => {
         </div>
 
         <div className="pt-8 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-4">
-           <p className="text-[10px] text-zinc-700 font-black uppercase tracking-[0.4em]">© 2026 DGAMERS ELITE PLATFORM</p>
-           <div className="flex items-center gap-8 text-[10px] uppercase font-black tracking-widest text-zinc-700">
+           <p className="text-[10px] text-blue-500/40 font-black uppercase tracking-[0.4em]">© 2026 DGAMERS ELITE PLATFORM</p>
+           <div className="flex items-center gap-8 text-[10px] uppercase font-black tracking-widest text-blue-500/40">
               <Link to="/legal" className="hover:text-primary transition-colors">Privacy</Link>
               <Link to="/legal" className="hover:text-primary transition-colors">Terms</Link>
               <Link to="/legal" className="hover:text-primary transition-colors">Cookies</Link>
@@ -991,48 +993,122 @@ const TransactionsPage = () => {
 };
 
 const WithdrawPage = () => {
-  const { profile } = useFirebase();
-  const amount = profile?.coins ? profile.coins / 1000 : 0;
-  const ngnAmount = profile?.coins || 0; // 1:1 ratio
-  const progress = Math.min((amount / 1) * 100, 100); // Changed min to $1 (1000 coins) for Nigerian context
+  const { profile, requestWithdrawal } = useFirebase();
+  const [selectedMethod, setSelectedMethod] = useState<string | null>(null);
+  const [amount, setAmount] = useState<string>('1000');
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [status, setStatus] = useState<{ type: 'success' | 'error', msg: string } | null>(null);
+
+  const availableCoins = profile?.coins || 0;
+  const ngnAmount = availableCoins; 
+  const progress = Math.min((availableCoins / 1000) * 100, 100);
+
+  const handleWithdraw = async () => {
+    if (!selectedMethod) {
+      setStatus({ type: 'error', msg: 'Please select a withdrawal method.' });
+      return;
+    }
+
+    const coinsToWithdraw = parseInt(amount);
+    if (isNaN(coinsToWithdraw) || coinsToWithdraw < 500) {
+      setStatus({ type: 'error', msg: 'Minimum withdrawal is 500 Coins (₦500).' });
+      return;
+    }
+
+    if (coinsToWithdraw > availableCoins) {
+      setStatus({ type: 'error', msg: 'Insufficient balance.' });
+      return;
+    }
+
+    setIsProcessing(true);
+    setStatus(null);
+    try {
+      await requestWithdrawal(coinsToWithdraw, selectedMethod);
+      setStatus({ type: 'success', msg: `Withdrawal of ₦${coinsToWithdraw.toLocaleString()} initiated successfully!` });
+      setAmount('1000');
+    } catch (err: any) {
+      console.error(err);
+      setStatus({ type: 'error', msg: 'Failed to process withdrawal. Please try again.' });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   return (
     <div className="space-y-8">
+      {status && (
+        <motion.div 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className={cn(
+            "p-4 rounded-xl border flex items-center gap-3",
+            status.type === 'success' ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" : "bg-red-500/10 border-red-500/20 text-red-400"
+          )}
+        >
+          {status.type === 'success' ? <CheckCircle2 className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
+          <span className="text-sm font-bold uppercase tracking-tight italic">{status.msg}</span>
+        </motion.div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           <div className="glass-card p-10 bg-gradient-to-br from-zinc-900 to-black relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-32 h-32 bg-primary/20 blur-3xl rounded-full translate-x-1/2 -translate-y-1/2"></div>
-            <div className="relative z-10">
-              <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-[0.2em] block mb-2">Available Balance</span>
-              <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-8">
-                <div>
-                  <h1 className="text-6xl font-black font-display tracking-tight text-primary">₦{ngnAmount.toLocaleString()}</h1>
-                  <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mt-1 block">Nigerian Naira (NGN)</span>
-                </div>
-                <div className="hidden md:block h-10 w-px bg-white/10 mx-2"></div>
-                <div className="flex flex-col">
-                  <span className="text-xl font-mono font-bold text-zinc-300">{(profile?.coins || 0).toLocaleString()} Coins</span>
-                  <span className="text-[10px] text-zinc-600 font-bold uppercase">~ ${amount.toFixed(2)} USD Equivalent</span>
+            <div className="relative z-10 flex flex-col md:flex-row justify-between gap-8">
+              <div className="space-y-4">
+                <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-[0.2em] block mb-2">Available Balance</span>
+                <h1 className="text-6xl font-black font-display tracking-tight text-primary">₦{ngnAmount.toLocaleString()}</h1>
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-mono font-bold text-zinc-300">{(availableCoins).toLocaleString()} Coins</span>
+                  <div className="w-px h-3 bg-white/10"></div>
+                  <span className="text-[10px] text-zinc-600 font-bold uppercase tracking-widest leading-none">Verified Player</span>
                 </div>
               </div>
-              <p className="text-zinc-500 text-sm mt-8 flex items-center gap-2 bg-white/5 w-fit px-4 py-2 rounded-full border border-white/5">
-                <ShieldCheck className="w-4 h-4 text-emerald-500" />
-                Verified for Nigerian Bank Transfers (Instant).
-              </p>
+              
+              <div className="md:w-64 space-y-4">
+                 <div className="space-y-1.5">
+                   <label className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest block px-1">Withdraw Amount (Coins)</label>
+                   <input 
+                    type="number" 
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    placeholder="1000"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-lg font-black font-display focus:outline-none focus:border-primary/50 text-white placeholder:text-zinc-800"
+                   />
+                 </div>
+                 <button 
+                  onClick={handleWithdraw}
+                  disabled={isProcessing || availableCoins < 500}
+                  className="w-full bg-primary hover:bg-primary/90 text-white font-black uppercase tracking-tighter italic h-12 rounded-xl transition-all shadow-lg shadow-primary/20 disabled:opacity-50 disabled:grayscale flex items-center justify-center gap-2"
+                 >
+                   {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
+                   Request Cash Out
+                 </button>
+              </div>
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
              {[
-               { name: 'Nigerian Bank Transfer', sub: 'Instant NGN', min: '₦1,000', icon: CreditCard, hot: true },
-               { name: 'Paga / OPay', sub: 'Instant Mobile Money', min: '₦500', icon: Zap },
-               { name: 'Airtime Recharge', sub: 'MTN, Airtel, Glo', min: '₦100', icon: Zap },
-               { name: 'Bitcoin (BTC)', sub: 'Global Crypto', min: '$10.00', icon: Bitcoin },
+               { name: 'Nigerian Bank Transfer', id: 'bank', sub: 'Instant NGN', min: '₦1,000', icon: CreditCard, hot: true },
+               { name: 'Paga / OPay', id: 'opay', sub: 'Instant Mobile Money', min: '₦500', icon: Zap },
+               { name: 'Airtime Recharge', id: 'airtime', sub: 'MTN, Airtel, Glo', min: '₦100', icon: Phone },
+               { name: 'Bitcoin (BTC)', id: 'btc', sub: 'Global Crypto', min: '$10.00', icon: Bitcoin },
              ].map((method) => (
-               <div key={method.name} className="glass-card p-6 flex items-center justify-between group cursor-pointer hover:border-primary/40 transition-all">
+               <div 
+                key={method.name} 
+                onClick={() => setSelectedMethod(method.id)}
+                className={cn(
+                  "glass-card p-6 flex items-center justify-between group cursor-pointer transition-all border",
+                  selectedMethod === method.id ? "border-primary bg-primary/5 shadow-[0_0_20px_rgba(37,99,235,0.1)]" : "border-white/5 hover:border-primary/40"
+                )}
+               >
                   <div className="flex items-center gap-4">
-                     <div className="w-12 h-12 bg-zinc-900 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
-                        <method.icon className="w-5 h-5 text-primary" />
+                     <div className={cn(
+                       "w-12 h-12 bg-zinc-900 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform",
+                       selectedMethod === method.id ? "bg-primary/20" : ""
+                     )}>
+                        <method.icon className={cn("w-5 h-5", selectedMethod === method.id ? "text-primary" : "text-zinc-500")} />
                      </div>
                      <div>
                         <h3 className="font-bold">{method.name}</h3>
@@ -1538,10 +1614,10 @@ const ReferralPage = () => {
       setReferrals(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     });
 
-    // 2. Fetch referral commission transactions
+    // 2. Fetch referral commission transactions (including first withdrawal bonuses)
     const q2 = query(
       collection(db, `users/${user.uid}/transactions`),
-      where('type', '==', 'referral'),
+      where('type', 'in', ['referral', 'referral_bonus']),
       orderBy('createdAt', 'desc')
     );
 
@@ -1596,9 +1672,14 @@ const ReferralPage = () => {
             </button>
           </div>
           {profile?.referrerId && (
-            <p className="text-[10px] text-zinc-600 uppercase tracking-widest font-bold">
-              You were referred by: <span className="text-primary">{profile.referrerId.slice(0, 8)}...</span>
-            </p>
+            <div className="pt-2 flex items-center gap-2">
+              <div className="w-6 h-6 rounded-lg bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20">
+                <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+              </div>
+              <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-black italic">
+                Verified Referrer: <span className="text-white">{profile.referrerName || profile.referrerId.slice(0, 8)}</span>
+              </p>
+            </div>
           )}
         </div>
         
