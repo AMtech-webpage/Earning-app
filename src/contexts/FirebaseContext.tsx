@@ -25,6 +25,7 @@ interface UserProfile {
     gamesPlayed: number;
     highestStreak: number;
     totalQuests: number;
+    rank?: number;
   };
   referrerId?: string;
   createdAt: any;
@@ -101,7 +102,8 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                 stats: {
                   gamesPlayed: 0,
                   highestStreak: 0,
-                  totalQuests: 0
+                  totalQuests: 0,
+                  rank: Math.floor(Math.random() * 500) + 50
                 },
                 createdAt: serverTimestamp(),
                 lastLoginAt: serverTimestamp(),

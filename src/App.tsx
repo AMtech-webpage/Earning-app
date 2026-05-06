@@ -31,12 +31,16 @@ import {
   Headphones,
   MessageSquare,
   Send,
-  Mail
+  Mail,
+  ArrowRight,
+  ShieldAlert
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { Hero3D } from './components/Hero3D';
 import { AuthPage } from './components/Auth';
+import { SecurityBanner } from './components/SecurityBanner';
+import { ComingSoon } from './components/ComingSoon';
 import { collection, query, orderBy, onSnapshot, where } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from './lib/firebase';
 
@@ -54,11 +58,11 @@ const Sidebar = ({ mobileOpen, setMobileOpen }: { mobileOpen?: boolean, setMobil
     { icon: Settings, label: 'Profile Settings', path: '/profile' },
     { icon: Gamepad2, label: 'Play to Earn', path: '/earn' },
     { icon: History, label: 'Activity', path: '/transactions' },
-    { icon: TrophyIcon, label: 'Leaderboard', path: '/leaderboard' },
-    { icon: Users, label: 'Referrals', path: '/referrals', badge: 'NEW' },
+    { icon: TrophyIcon, label: 'Leaderboard', path: '/coming-soon' },
+    { icon: Users, label: 'Referrals', path: '/coming-soon', badge: 'NEW' },
     { icon: Wallet, label: 'Cash Out', path: '/withdraw' },
-    { icon: Gift, label: 'Bonus Codes', path: '/bonus' },
-    { icon: BookOpen, label: 'Guides', path: '/articles' },
+    { icon: Gift, label: 'Bonus Codes', path: '/coming-soon' },
+    { icon: BookOpen, label: 'Guides', path: '/coming-soon' },
     { icon: Headphones, label: 'Support', path: '/support' },
     { icon: ShieldCheck, label: 'Legal & FAQ', path: '/legal' },
   ];
@@ -163,7 +167,7 @@ const Footer = () => {
               <div className="w-10 h-10 bg-zinc-900 border border-white/10 rounded-xl flex items-center justify-center group-hover:border-primary/50 transition-all">
                 <Gamepad2 className="text-primary w-6 h-6" />
               </div>
-              <span className="font-display font-bold text-3xl tracking-tighter italic">D<span className="text-primary">GAMERS</span></span>
+              <span className="font-display font-bold text-3xl tracking-tighter italic text-white uppercase">D<span className="text-primary">GAMERS</span></span>
             </Link>
             <p className="text-zinc-500 text-sm leading-relaxed max-w-xs font-medium">
               The premier reward destination for elite Nigerian gamers. Earn real value for your time and skills.
@@ -182,7 +186,7 @@ const Footer = () => {
             <ul className="space-y-4">
               {['Earn Coins', 'Leaderboard', 'Withdraw', 'Referrals'].map((item) => (
                 <li key={item}>
-                  <Link to={`/${item.toLowerCase().replace(' ', '')}`} className="text-zinc-500 hover:text-primary transition-colors text-sm font-bold uppercase tracking-tight italic">
+                  <Link to={item === 'Leaderboard' || item === 'Referrals' ? "/coming-soon" : `/${item.toLowerCase().replace(' ', '')}`} className="text-zinc-500 hover:text-primary transition-colors text-sm font-bold uppercase tracking-tight italic">
                     {item}
                   </Link>
                 </li>
@@ -195,7 +199,7 @@ const Footer = () => {
             <ul className="space-y-4">
               {['Guides', 'Support', 'Legal & FAQ', 'Bonus Codes'].map((item) => (
                 <li key={item}>
-                  <Link to={`/${item.toLowerCase().replace(' & ', '').replace(' ', '')}`} className="text-zinc-500 hover:text-primary transition-colors text-sm font-bold uppercase tracking-tight italic">
+                  <Link to={item === 'Guides' || item === 'Bonus Codes' ? "/coming-soon" : `/${item.toLowerCase().replace(' & ', '').replace(' ', '')}`} className="text-zinc-500 hover:text-primary transition-colors text-sm font-bold uppercase tracking-tight italic">
                     {item}
                   </Link>
                 </li>
@@ -593,175 +597,117 @@ const ProfilePage = () => {
 const Dashboard = () => {
   const { profile } = useFirebase();
   return (
-    <div className="space-y-8">
-    <div className="bg-primary/10 border border-primary/20 rounded-2xl p-4 flex flex-col md:flex-row items-center justify-between gap-4">
-       <div className="flex items-center gap-3 text-center md:text-left">
-          <div className="w-10 h-10 bg-primary/20 rounded-xl flex items-center justify-center shrink-0">
-             <ShieldCheck className="text-primary w-6 h-6" />
-          </div>
-          <div>
-             <h3 className="text-sm font-bold text-white uppercase tracking-tight">Nigeria Restricted Access</h3>
-             <p className="text-[11px] text-zinc-400">DGamers is currently only available for players in Nigeria. Use of VPN is strictly prohibited.</p>
-          </div>
-       </div>
-       <div className="flex items-center gap-4">
-          <div className="text-center md:text-right">
-             <div className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Rate</div>
-             <div className="text-xs font-bold font-mono">1,000 Coins = ₦1,000</div>
-          </div>
-          <div className="h-8 w-px bg-white/10"></div>
-          <Link to="/earn" className="bg-primary hover:bg-primary/90 text-white px-6 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all">Start Now</Link>
-       </div>
-    </div>
-
-    <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-      <div className="lg:col-span-3 glass-card p-10 bg-gradient-to-br from-zinc-900 to-black relative overflow-hidden group min-h-[440px] flex flex-col justify-center border-white/5">
-        <Hero3D />
-        <div className="relative z-10">
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.2 }}
-          >
-            <div className="flex items-center gap-3 mb-4">
-              <span className="h-px w-8 bg-primary"></span>
-              <span className="text-primary font-bold text-xs uppercase tracking-[0.3em]">Elite Reward Hub</span>
-            </div>
-            <h1 className="text-7xl font-black mb-8 font-display max-w-2xl leading-[0.9] tracking-tighter italic">
-              LEVEL UP YOUR<br />
-              <span className="text-primary">BALANCE.</span>
+    <div className="space-y-12">
+      {/* Hero Section */}
+      <section className="relative overflow-hidden rounded-[2rem] border border-white/5 bg-zinc-950 p-8 md:p-16 min-h-[400px] flex items-center group">
+         <div className="absolute inset-0 bg-gradient-to-r from-dark-bg via-transparent to-transparent z-10"></div>
+         <div className="absolute right-0 top-0 bottom-0 w-1/2 opacity-40 grayscale group-hover:opacity-100 group-hover:grayscale-0 transition-all duration-700">
+            <Hero3D />
+         </div>
+         <div className="relative z-20 max-w-2xl space-y-6">
+            <motion.div 
+               initial={{ opacity: 0, x: -20 }}
+               animate={{ opacity: 1, x: 0 }}
+               className="inline-flex items-center gap-2 px-3 py-1 bg-primary/10 border border-primary/20 rounded-full text-[10px] font-black text-primary uppercase tracking-[0.3em]"
+            >
+               <Zap className="w-3 h-3 fill-primary" /> Active Boost: +10% Coins
+            </motion.div>
+            <h1 className="text-massive font-heavy italic tracking-tighter text-white uppercase">
+               LEVEL UP <br />
+               <span className="text-zinc-600 group-hover:text-primary transition-colors cursor-default">D-GAMERS</span>
             </h1>
-            <p className="text-zinc-400 max-w-sm mb-10 leading-relaxed text-lg font-medium">
-              The most reliable play-to-earn ecosystem in Nigeria. Join elite gamers and cash out at just $5.00.
+            <p className="text-zinc-500 text-lg md:text-xl font-medium max-w-lg leading-relaxed">
+               Welcome, <span className="text-white">{profile?.username}</span>. You are ranked <span className="text-white font-bold italic">#{profile?.stats?.rank || 42}</span> in the Nigerian Elite Tier. 
+               Keep earning to maintain your status.
             </p>
-            <div className="flex flex-wrap gap-4">
-              <button className="bg-primary hover:bg-primary/90 text-white px-10 py-4 rounded-xl font-bold shadow-[0_0_30px_rgba(37,99,235,0.2)] flex items-center gap-2 group transition-all border border-white/10 uppercase tracking-widest text-xs">
-                Start Earning
-                <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-              </button>
-              <button className="bg-white/5 hover:bg-white/10 text-white border border-white/10 px-10 py-4 rounded-xl font-bold transition-all backdrop-blur-md uppercase tracking-widest text-xs">
-                Whitepaper
-              </button>
+            <div className="flex flex-wrap gap-4 pt-4">
+               <Link to="/earn" className="bg-primary hover:bg-primary/90 text-white px-8 py-5 rounded-2xl font-bold uppercase tracking-widest text-xs shadow-2xl shadow-primary/40 flex items-center gap-3 active:scale-95 transition-all">
+                  Launch Quest Center <ArrowRight className="w-4 h-4" />
+               </Link>
+               <Link to="/withdraw" className="bg-white/5 hover:bg-white/10 backdrop-blur-md text-white px-8 py-5 rounded-2xl font-bold uppercase tracking-widest text-xs border border-white/10 active:scale-95 transition-all">
+                  Cash Out Earnings
+               </Link>
             </div>
-          </motion.div>
-        </div>
-      </div>
-      <div className="flex flex-col gap-6">
-        <div className="glass-card p-8 flex flex-col justify-between h-full bg-zinc-900/40 border-white/5">
-          <div>
-            <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest flex items-center gap-2">
-              <TrendingUp className="w-3 h-3" /> System Projections
-            </span>
-            <div className="flex items-end gap-2 mt-4">
-              <span className="text-5xl font-black font-display tracking-tight">$142.50</span>
-            </div>
-            <p className="text-xs text-emerald-500 font-bold uppercase mt-2 font-mono">Performance: +12.4%</p>
-          </div>
-          <div className="mt-12 space-y-4 pt-8 border-t border-white/5 font-mono text-[11px]">
-            <div className="flex items-center justify-between">
-              <span className="text-zinc-500 uppercase tracking-tighter">Verified Coins</span>
-              <span className="text-white font-bold">{profile?.coins?.toLocaleString() || 0}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-zinc-500 uppercase tracking-tighter">Status</span>
-              <span className="text-emerald-500 uppercase">Operational</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+         </div>
+      </section>
 
-    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-       <div className="md:col-span-3 space-y-8">
-          <div>
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold flex items-center gap-2">
-                <Gamepad2 className="text-primary w-5 h-5" />
-                Featured Partner Offerwalls
-              </h2>
-              <Link to="/earn" className="text-primary text-sm font-medium hover:underline flex items-center gap-1">
-                View All Partners <ChevronRight className="w-4 h-4" />
-              </Link>
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+         {[
+           { label: 'Current Balance', value: `$${(profile?.coins ? profile.coins / 1000 : 0).toFixed(2)}`, sub: `${profile?.coins || 0} Coins`, color: 'text-primary' },
+           { label: 'Total Earnings', value: '$842.50', sub: 'Lifetime Profit', color: 'text-emerald-500' },
+           { label: 'Active Quests', value: '12', sub: '4 Ending Soon', color: 'text-amber-500' },
+           { label: 'Quest Rank', value: profile?.tier?.toUpperCase() || 'ELITE', sub: 'Top 5% Players', color: 'text-indigo-400' },
+         ].map((stat, i) => (
+            <motion.div 
+               key={stat.label}
+               initial={{ opacity: 0, y: 20 }}
+               animate={{ opacity: 1, y: 0 }}
+               transition={{ delay: i * 0.1 }}
+               className="glass-card p-8 border-white/5 relative group overflow-hidden"
+            >
+               <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-20 transition-opacity">
+                  <TrendingUp className="w-16 h-16" />
+               </div>
+               <span className="text-[10px] text-zinc-500 font-black uppercase tracking-widest block mb-4">{stat.label}</span>
+               <div className="space-y-1">
+                  <h3 className={cn("text-3xl font-black font-display tracking-tighter", stat.color)}>{stat.value}</h3>
+                  <p className="text-zinc-500 text-xs font-bold italic">{stat.sub}</p>
+               </div>
+            </motion.div>
+         ))}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+         <div className="lg:col-span-2 space-y-8">
+            <div className="flex items-center justify-between">
+               <h2 className="text-2xl font-heavy italic tracking-tighter uppercase">Featured Partner Offerwalls</h2>
+               <Link to="/earn" className="text-primary text-xs font-black uppercase tracking-widest hover:underline">View All</Link>
             </div>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               {[
-                { name: 'Revenue Universe', img: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=200&auto=format&fit=crop' },
-                { name: 'Lootably', img: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?q=80&w=200&auto=format&fit=crop' },
-                { name: 'AdGate Media', img: 'https://images.unsplash.com/photo-1493711662062-fa541adb3fc8?q=80&w=200&auto=format&fit=crop' },
-                { name: 'BitLabs', img: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=200&auto=format&fit=crop' },
+                { name: 'Revenue Universe', img: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=200' },
+                { name: 'Lootably', img: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?q=80&w=200' },
+                { name: 'AdGate Media', img: 'https://images.unsplash.com/photo-1493711662062-fa541adb3fc8?q=80&w=200' },
               ].map((partner) => (
-                <div key={partner.name} className="glass-card p-6 flex flex-col items-center justify-center text-center group cursor-pointer hover:border-primary/30 transition-all overflow-hidden relative">
-                  <div className="absolute inset-0 opacity-10 group-hover:opacity-20 transition-opacity">
+                <Link key={partner.name} to="/earn" className="glass-card p-6 flex flex-col items-center justify-center text-center group cursor-pointer hover:border-primary/50 transition-all border-white/5 bg-zinc-900/30 backdrop-blur-sm overflow-hidden relative">
+                  <div className="w-16 h-16 bg-zinc-800 rounded-2xl mb-4 group-hover:scale-110 transition-transform flex items-center justify-center border border-white/10 overflow-hidden relative z-10">
                     <img src={partner.img} alt={partner.name} className="w-full h-full object-cover" />
                   </div>
-                  <div className="w-16 h-16 bg-zinc-800 rounded-2xl mb-4 group-hover:scale-110 transition-transform flex items-center justify-center border border-white/5 overflow-hidden">
-                    <img src={partner.img} alt={partner.name} className="w-full h-full object-cover" />
-                  </div>
-                  <h3 className="font-bold text-sm tracking-tight relative z-10">{partner.name}</h3>
-                  <span className="text-[10px] text-zinc-500 mt-1 uppercase tracking-widest font-bold relative z-10">Hot Offers</span>
-                </div>
+                  <h3 className="font-bold text-sm tracking-tight relative z-10 uppercase italic">{partner.name}</h3>
+                </Link>
               ))}
             </div>
-          </div>
+         </div>
 
-          <div>
-            <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
-              <BookOpen className="text-primary w-5 h-5" />
-              Pro-Gamer Articles
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {[
-                { title: 'The $5 Cash-out Strategy', category: 'Guides', date: '2h ago' },
-                { title: 'Maximizing Reward Payouts', category: 'Earnings', date: '5h ago' },
-                { title: 'Why Bitcoin for Payments?', category: 'Crypto', date: '1d ago' },
-              ].map((article, i) => (
-                <div key={i} className="glass-card overflow-hidden group cursor-pointer border border-white/5 hover:border-primary/20">
-                  <div className="h-40 bg-zinc-800"></div>
-                  <div className="p-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded font-bold uppercase">{article.category}</span>
-                      <span className="text-[10px] text-zinc-500 flex items-center gap-1"><Clock className="w-3 h-3" /> {article.date}</span>
+         <div className="space-y-8">
+            <h2 className="text-2xl font-heavy italic tracking-tighter uppercase">Live System Feed</h2>
+            <div className="glass-card p-6 border-white/5 divide-y divide-white/5">
+                {[
+                  { user: 'Storm7', amount: '$5.00', partner: 'RevU', time: 'Just now' },
+                  { user: 'GamerX', amount: '$1.25', partner: 'Lootably', time: '2m ago' },
+                  { user: 'CryptoP', amount: '$15.00', partner: 'AdGate', time: '5m ago' },
+                  { user: 'MuizI', amount: '$2.50', partner: 'BitLabs', time: '8m ago' },
+                ].map((feed, i) => (
+                  <div key={i} className="py-4 first:pt-0 last:pb-0 flex items-center justify-between group cursor-default">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-[10px] font-bold text-primary italic uppercase">
+                        {feed.user[0]}
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-white group-hover:text-primary transition-colors">{feed.user}</p>
+                        <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-widest">{feed.partner} • {feed.time}</p>
+                      </div>
                     </div>
-                    <h3 className="font-bold group-hover:text-primary transition-colors line-clamp-2">{article.title}</h3>
+                    <div className="text-right">
+                      <span className="text-xs font-black text-emerald-500 italic block">{feed.amount}</span>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
             </div>
-          </div>
-       </div>
-
-       <div className="space-y-6">
-          <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Live Activity</h3>
-          <div className="space-y-3">
-             {[
-               { user: 'Storm7', amount: '$5.00', partner: 'RevU', time: 'Just now' },
-               { user: 'GamerX', amount: '$1.25', partner: 'Lootably', time: '2m ago' },
-               { user: 'CryptoP', amount: '$15.00', partner: 'AdGate', time: '5m ago' },
-               { user: 'MuizI', amount: '$2.50', partner: 'BitLabs', time: '8m ago' },
-               { user: 'Elite1', amount: '$0.80', partner: 'Lootably', time: '12m ago' },
-               { user: 'Zoro99', amount: '$10.00', partner: 'RevU', time: '15m ago' },
-             ].map((feed, i) => (
-               <motion.div 
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: i * 0.1 }}
-                key={i} 
-                className="glass-card p-4 border border-white/5 flex flex-col gap-1"
-               >
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-sm">{feed.user}</span>
-                    <span className="text-emerald-500 font-bold text-sm tracking-tight">{feed.amount}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-[10px] text-zinc-500">
-                    <span className="uppercase font-bold tracking-widest">{feed.partner}</span>
-                    <span className="italic">{feed.time}</span>
-                  </div>
-               </motion.div>
-             ))}
-          </div>
-       </div>
+         </div>
+      </div>
     </div>
-  </div>
   );
 };
 
@@ -1868,6 +1814,7 @@ function App() {
     <Routes>
       <Route path="/legal" element={<PublicPageWrapper><LegalPage /></PublicPageWrapper>} />
       <Route path="/support" element={<PublicPageWrapper><SupportPage /></PublicPageWrapper>} />
+      <Route path="/coming-soon" element={<PublicPageWrapper><ComingSoon /></PublicPageWrapper>} />
       <Route path="*" element={
         !user ? (
           <AuthPage />
@@ -1885,6 +1832,7 @@ function App() {
               <Route path="/articles" element={<ArticlesPage />} />
               <Route path="/support" element={<SupportPage />} />
               <Route path="/legal" element={<LegalPage />} />
+              <Route path="/coming-soon" element={<ComingSoon />} />
             </Routes>
           </Layout>
         )
