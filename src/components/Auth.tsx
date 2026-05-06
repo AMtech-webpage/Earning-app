@@ -21,7 +21,9 @@ export const AuthPage = () => {
     const ref = params.get('ref') || params.get('referrer');
     if (ref) {
       setRefCode(ref);
+      localStorage.setItem('dgamers_ref', ref);
       setShowBonusField(true);
+      setIsLogin(false); // Default to Register mode for referred users
     }
   }, []);
 

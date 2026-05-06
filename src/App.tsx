@@ -58,11 +58,11 @@ const Sidebar = ({ mobileOpen, setMobileOpen }: { mobileOpen?: boolean, setMobil
     { icon: Settings, label: 'Profile Settings', path: '/profile' },
     { icon: Gamepad2, label: 'Play to Earn', path: '/earn' },
     { icon: History, label: 'Activity', path: '/transactions' },
-    { icon: TrophyIcon, label: 'Leaderboard', path: '/coming-soon' },
-    { icon: Users, label: 'Referrals', path: '/coming-soon', badge: 'NEW' },
+    { icon: TrophyIcon, label: 'Leaderboard', path: '/leaderboard' },
+    { icon: Users, label: 'Referrals', path: '/referrals', badge: 'NEW' },
     { icon: Wallet, label: 'Cash Out', path: '/withdraw' },
-    { icon: Gift, label: 'Bonus Codes', path: '/coming-soon' },
-    { icon: BookOpen, label: 'Guides', path: '/coming-soon' },
+    { icon: Gift, label: 'Bonus Codes', path: '/bonus' },
+    { icon: BookOpen, label: 'Guides', path: '/articles' },
     { icon: Headphones, label: 'Support', path: '/support' },
     { icon: ShieldCheck, label: 'Legal & FAQ', path: '/legal' },
   ];
@@ -184,9 +184,9 @@ const Footer = () => {
           <div>
             <h4 className="text-xs font-black uppercase tracking-[0.2em] text-white mb-6">Platform</h4>
             <ul className="space-y-4">
-              {['Earn Coins', 'Leaderboard', 'Withdraw', 'Referrals'].map((item) => (
+              {['Earn', 'Leaderboard', 'Withdraw', 'Referrals'].map((item) => (
                 <li key={item}>
-                  <Link to={item === 'Leaderboard' || item === 'Referrals' ? "/coming-soon" : `/${item.toLowerCase().replace(' ', '')}`} className="text-zinc-500 hover:text-primary transition-colors text-sm font-bold uppercase tracking-tight italic">
+                  <Link to={`/${item.toLowerCase()}`} className="text-zinc-500 hover:text-primary transition-colors text-sm font-bold uppercase tracking-tight italic">
                     {item}
                   </Link>
                 </li>
@@ -197,10 +197,15 @@ const Footer = () => {
           <div>
             <h4 className="text-xs font-black uppercase tracking-[0.2em] text-white mb-6">Support</h4>
             <ul className="space-y-4">
-              {['Guides', 'Support', 'Legal & FAQ', 'Bonus Codes'].map((item) => (
-                <li key={item}>
-                  <Link to={item === 'Guides' || item === 'Bonus Codes' ? "/coming-soon" : `/${item.toLowerCase().replace(' & ', '').replace(' ', '')}`} className="text-zinc-500 hover:text-primary transition-colors text-sm font-bold uppercase tracking-tight italic">
-                    {item}
+              {[
+                { label: 'Guides', path: '/articles' },
+                { label: 'Support', path: '/support' },
+                { label: 'Legal & FAQ', path: '/legal' },
+                { label: 'Bonus Codes', path: '/bonus' }
+              ].map((item) => (
+                <li key={item.label}>
+                  <Link to={item.path} className="text-zinc-500 hover:text-primary transition-colors text-sm font-bold uppercase tracking-tight italic">
+                    {item.label}
                   </Link>
                 </li>
               ))}
@@ -1518,7 +1523,7 @@ const ReferralPage = () => {
   const [refEarnings, setRefEarnings] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  const refLink = `${window.location.origin}/join?ref=${user?.uid || 'USR_67J29'}`;
+  const refLink = user ? `${window.location.origin}/join?ref=${user.uid}` : 'Generating link...';
 
   useEffect(() => {
     if (!user) return;
@@ -1557,6 +1562,7 @@ const ReferralPage = () => {
   }, [user]);
 
   const copyToClipboard = () => {
+    if (!user) return;
     navigator.clipboard.writeText(refLink);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -1612,62 +1618,91 @@ const ReferralPage = () => {
         </div>
       </div>
 
-      <div>
-        <h2 className="text-2xl font-bold mb-6 italic font-display">Real-time Referral Network</h2>
-        <div className="glass-card overflow-hidden">
-           <table className="w-full text-left">
-              <thead>
-                <tr className="border-b border-white/5 bg-white/5">
-                   <th className="px-6 py-4 text-xs font-bold uppercase tracking-widest text-zinc-500">User</th>
-                   <th className="px-6 py-4 text-xs font-bold uppercase tracking-widest text-zinc-500">Joined Date</th>
-                   <th className="px-6 py-4 text-xs font-bold uppercase tracking-widest text-zinc-500">User Rank</th>
-                   <th className="px-6 py-4 text-xs font-bold uppercase tracking-widest text-zinc-500 text-right">Activity</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/5">
-                 {loading ? (
-                   <tr>
-                     <td colSpan={4} className="px-6 py-12 text-center">
-                        <Loader2 className="w-6 h-6 animate-spin mx-auto text-zinc-600 mb-2" />
-                        <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Scanning Network...</span>
-                     </td>
-                   </tr>
-                 ) : referrals.length === 0 ? (
-                   <tr>
-                     <td colSpan={4} className="px-6 py-12 text-center text-zinc-500 italic text-sm">
-                       No referrals found yet. Share your link to start earning!
-                     </td>
-                   </tr>
-                 ) : (
-                   referrals.map((ref, i) => (
-                     <tr key={i} className="hover:bg-white/[0.02] transition-colors group">
-                        <td className="px-6 py-4">
-                           <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-full bg-zinc-800 border border-white/5 overflow-hidden">
-                                 <img src={ref.avatarUrl || `https://api.dicebear.com/7.x/pixel-art/svg?seed=${ref.username}`} alt="av" />
-                              </div>
-                              <span className="font-bold">{ref.username}</span>
-                           </div>
-                        </td>
-                        <td className="px-6 py-4 text-zinc-500 text-sm whitespace-nowrap">
-                          {ref.createdAt?.toDate ? ref.createdAt.toDate().toLocaleDateString() : 'Newcomer'}
-                        </td>
-                        <td className="px-6 py-4 italic">
-                           <span className={cn(
-                             "text-[9px] px-2 py-0.5 rounded font-black uppercase tracking-widest border",
-                             ref.tier === 'platinum' ? "bg-cyan-500/10 border-cyan-500/20 text-cyan-400" : "bg-zinc-800 border-white/5 text-zinc-500"
-                           )}>
-                             {ref.tier || 'BRONZE'}
-                           </span>
-                        </td>
-                        <td className="px-6 py-4 text-right font-mono font-bold text-emerald-500">
-                          {ref.coins > 0 ? 'ACTIVE' : 'IDLE'}
-                        </td>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="md:col-span-2 space-y-8">
+          <h2 className="text-2xl font-bold italic font-display">Real-time Referral Network</h2>
+          <div className="glass-card overflow-hidden">
+             <table className="w-full text-left">
+                <thead>
+                  <tr className="border-b border-white/5 bg-white/5">
+                     <th className="px-6 py-4 text-xs font-bold uppercase tracking-widest text-zinc-500">User</th>
+                     <th className="px-6 py-4 text-xs font-bold uppercase tracking-widest text-zinc-500">Joined Date</th>
+                     <th className="px-6 py-4 text-xs font-bold uppercase tracking-widest text-zinc-500">User Rank</th>
+                     <th className="px-6 py-4 text-xs font-bold uppercase tracking-widest text-zinc-500 text-right">Activity</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                   {loading ? (
+                     <tr>
+                       <td colSpan={4} className="px-6 py-12 text-center">
+                          <Loader2 className="w-6 h-6 animate-spin mx-auto text-zinc-600 mb-2" />
+                          <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Scanning Network...</span>
+                       </td>
                      </tr>
-                   ))
-                 )}
-              </tbody>
-           </table>
+                   ) : referrals.length === 0 ? (
+                     <tr>
+                       <td colSpan={4} className="px-6 py-12 text-center text-zinc-500 italic text-sm">
+                         No referrals found yet. Share your link to start earning!
+                       </td>
+                     </tr>
+                   ) : (
+                     referrals.map((ref, i) => (
+                       <tr key={i} className="hover:bg-white/[0.02] transition-colors group">
+                          <td className="px-6 py-4">
+                             <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-full bg-zinc-800 border border-white/5 overflow-hidden">
+                                   <img src={ref.avatarUrl || `https://api.dicebear.com/7.x/pixel-art/svg?seed=${ref.username}`} alt="av" />
+                                </div>
+                                <span className="font-bold">{ref.username}</span>
+                             </div>
+                          </td>
+                          <td className="px-6 py-4 text-zinc-500 text-sm whitespace-nowrap">
+                            {ref.createdAt?.toDate ? ref.createdAt.toDate().toLocaleDateString() : 'Newcomer'}
+                          </td>
+                          <td className="px-6 py-4 italic">
+                             <span className={cn(
+                               "text-[9px] px-2 py-0.5 rounded font-black uppercase tracking-widest border",
+                               ref.tier === 'platinum' ? "bg-cyan-500/10 border-cyan-500/20 text-cyan-400" : "bg-zinc-800 border-white/5 text-zinc-500"
+                             )}>
+                               {ref.tier || 'BRONZE'}
+                             </span>
+                          </td>
+                          <td className="px-6 py-4 text-right font-mono font-bold text-emerald-500">
+                            {ref.coins > 0 ? 'ACTIVE' : 'IDLE'}
+                          </td>
+                       </tr>
+                     ))
+                   )}
+                </tbody>
+             </table>
+          </div>
+        </div>
+
+        <div className="space-y-6">
+           <h2 className="text-2xl font-bold italic font-display">How it Works</h2>
+           <div className="glass-card p-8 border-primary/20 bg-primary/5 space-y-8">
+              {[
+                { title: 'Invite Friends', desc: 'Share your link with gamers, streamers, and friends.' },
+                { title: 'They Perform', desc: 'User completes offers, surveys, or plays games.' },
+                { title: 'You Earn 10%', desc: 'We instantly credit 10% of their earnings to your balance.' },
+                { title: 'Lifetime Stream', desc: 'As long as they earn, you earn. Forever.' }
+              ].map((step, i) => (
+                <div key={i} className="flex gap-4">
+                   <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center text-primary font-bold text-xs shrink-0">
+                      0{i+1}
+                   </div>
+                   <div>
+                      <h4 className="text-sm font-bold text-white mb-1 uppercase tracking-tight">{step.title}</h4>
+                      <p className="text-xs text-zinc-500 leading-relaxed">{step.desc}</p>
+                   </div>
+                </div>
+              ))}
+              <div className="pt-4 border-t border-white/5">
+                 <p className="text-[10px] text-zinc-500 italic leading-relaxed text-center">
+                    Note: Fake accounts, self-referrals, and VPN users will result in immediate disqualification and balance reset.
+                 </p>
+              </div>
+           </div>
         </div>
       </div>
     </div>
