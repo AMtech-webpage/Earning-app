@@ -28,6 +28,8 @@ interface UserProfile {
     rank?: number;
   };
   referrerId?: string;
+  referredBy?: string;
+  referralCode?: string;
   referrerName?: string;
   hasWithdrawn?: boolean;
   createdAt: any;
@@ -42,6 +44,7 @@ interface FirebaseContextType {
   loading: boolean;
   isAuthenticating: boolean;
   authError: string | null;
+  securityInfo: { ip: string, country: string, isVpn: boolean } | null;
   signIn: () => Promise<void>;
   signUpWithEmail: (email: string, pass: string, username: string) => Promise<void>;
   signInWithEmail: (email: string, pass: string) => Promise<void>;
@@ -61,6 +64,25 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [loading, setLoading] = useState(true);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [securityInfo, setSecurityInfo] = useState<{ ip: string, country: string, isVpn: boolean } | null>(null);
+
+  // Fetch security info (IP/VPN)
+  useEffect(() => {
+    const fetchSecurity = async () => {
+      try {
+        const res = await fetch('https://ipapi.co/json/');
+        const data = await res.json();
+        setSecurityInfo({ 
+          ip: data.ip, 
+          country: data.country_name,
+          isVpn: false // Simplified for demo, usually we'd check against a list or use a specialized service
+        });
+      } catch (e) {
+        console.warn("Security check failed", e);
+      }
+    };
+    fetchSecurity();
+  }, []);
 
   // Capture referral code from URL early
   useEffect(() => {
@@ -80,7 +102,29 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           // Setup profile reference
           const profileRef = doc(db, 'users', firebaseUser.uid);
           
-          // Use onSnapshot for reactive profile loading
+          // 1. First, check if profile exists on the backend & init if needed
+          try {
+            const response = await fetch(`/api/user/profile/${firebaseUser.uid}`);
+            if (response.ok) {
+              const { profile: backendProfile } = await response.json();
+              console.log("Backend profile sync complete");
+              
+              // Apply stored referral if this is a first-time user
+              const storedRef = localStorage.getItem('dgamers_ref');
+              if (storedRef && storedRef !== firebaseUser.uid) {
+                await fetch('/api/referral/apply', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ uid: firebaseUser.uid, referralCode: storedRef })
+                });
+                localStorage.removeItem('dgamers_ref');
+              }
+            }
+          } catch (err) {
+            console.error("Backend profile init failed", err);
+          }
+
+          // 2. Use onSnapshot for reactive profile loading
           const unsubProfile = onSnapshot(profileRef, async (docSnap) => {
             if (docSnap.exists()) {
               setProfile(docSnap.data() as UserProfile);
@@ -322,62 +366,26 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     if (!user || !profile) return;
     if (profile.coins < amountInCoins) throw new Error("Insufficient balance.");
 
-    const profileRef = doc(db, 'users', user.uid);
-    const transactionId = crypto.randomUUID();
-    const withdrawActivityRef = doc(db, `users/${user.uid}/transactions`, transactionId);
-
     try {
-      const batch = writeBatch(db);
-
-      // 1. Record the withdrawal
-      batch.set(withdrawActivityRef, {
-        userId: user.uid,
-        amount: amountInCoins / 1000,
-        coins: amountInCoins,
-        type: 'withdraw',
-        status: 'pending',
-        description: `Withdrawal via ${method}`,
-        createdAt: serverTimestamp()
+      const response = await fetch('/api/withdraw', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          uid: user.uid,
+          amount: amountInCoins,
+          method: method
+        })
       });
 
-      // 2. Update user balance and withdrawal flag
-      const isFirstWithdrawal = !profile.hasWithdrawn;
-      batch.set(profileRef, {
-        coins: (profile.coins || 0) - amountInCoins,
-        hasWithdrawn: true,
-        lastLoginAt: serverTimestamp()
-      }, { merge: true });
-
-      // 3. Award Referral Bonus if first withdrawal
-      if (isFirstWithdrawal && profile.referrerId) {
-        const referralBonusAmount = 500; // Flat bonus for first withdrawal
-        const referrerRef = doc(db, 'users', profile.referrerId);
-        const referrerSnap = await getDoc(referrerRef);
-
-        if (referrerSnap.exists()) {
-          const bonusTransactionId = crypto.randomUUID();
-          const referrerBonusRef = doc(db, `users/${profile.referrerId}/transactions`, bonusTransactionId);
-
-          batch.set(referrerBonusRef, {
-            userId: profile.referrerId,
-            amount: referralBonusAmount / 1000,
-            coins: referralBonusAmount,
-            type: 'referral_bonus',
-            status: 'completed',
-            description: `Bonus for ${profile.username}'s first withdrawal`,
-            fromUser: profile.username,
-            createdAt: serverTimestamp()
-          });
-
-          batch.set(referrerRef, {
-            coins: (referrerSnap.data().coins || 0) + referralBonusAmount
-          }, { merge: true });
-        }
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Withdrawal failed on server");
       }
 
-      await batch.commit();
-    } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, `users/${user.uid}/transactions`);
+      console.log("Withdrawal successfully processed by backend");
+    } catch (error: any) {
+      console.error("Withdrawal API error", error);
+      throw error;
     }
   };
 
@@ -420,6 +428,7 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       loading, 
       isAuthenticating, 
       authError, 
+      securityInfo,
       signIn, 
       signUpWithEmail,
       signInWithEmail,

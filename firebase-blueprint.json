@@ -26,9 +26,19 @@
         "lastLoginAt": { "type": "string", "format": "date-time" },
         "isVerified": { "type": "boolean" },
         "country": { "type": "string" },
-        "walletAddress": { "type": "string", "description": "Connected cryptocurrency wallet address" }
+        "walletAddress": { "type": "string", "description": "Connected cryptocurrency wallet address" },
+        "referralCode": { "type": "string", "description": "Unique referral code for this user" }
       },
-      "required": ["uid", "username", "coins", "tier", "createdAt"]
+      "required": ["uid", "username", "coins", "tier", "createdAt", "referralCode"]
+    },
+    "ReferralCodeEntry": {
+      "title": "Referral Code Entry",
+      "description": "Mapping from referral code to owner UID.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" }
+      },
+      "required": ["userId"]
     },
     "UsernameEntry": {
       "title": "Username Entry",
@@ -103,6 +113,10 @@
     "/usernames/{username}": {
       "schema": "UsernameEntry",
       "description": "Unique usernames mapping to UIDs"
+    },
+    "/referral_codes/{code}": {
+      "schema": "ReferralCodeEntry",
+      "description": "Mapping from referral code to owner UID"
     }
   }
 }

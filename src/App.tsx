@@ -35,7 +35,8 @@ import {
   ArrowRight,
   ShieldAlert,
   Phone,
-  AlertCircle
+  AlertCircle,
+  Lock
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -43,7 +44,7 @@ import { Hero3D } from './components/Hero3D';
 import { AuthPage } from './components/Auth';
 import { SecurityBanner } from './components/SecurityBanner';
 import { ComingSoon } from './components/ComingSoon';
-import { collection, query, orderBy, onSnapshot, where } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, where, doc, getDocFromServer } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from './lib/firebase';
 
 import { useFirebase } from './contexts/FirebaseContext';
@@ -53,20 +54,47 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+const getFlagEmoji = (countryName: string) => {
+  const flags: Record<string, string> = {
+    'Nigeria': '🇳🇬',
+    'USA': '🇺🇸',
+    'United Kingdom': '🇬🇧',
+    'UK': '🇬🇧',
+    'Germany': '🇩🇪',
+    'China': '🇨🇳',
+    'Japan': '🇯🇵',
+    'Canada': '🇨🇦',
+    'South Africa': '🇿🇦',
+    'Ghana': '🇬🇭',
+  };
+  return flags[countryName] || '🌐';
+};
+
+// CRITICAL: Validate connection to Firestore as per security guidelines
+const testConnection = async () => {
+  try {
+    await getDocFromServer(doc(db, 'test', 'connection'));
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('offline')) {
+      console.error("Firebase connection check: Client appears to be offline or configured incorrectly.");
+    }
+  }
+};
+testConnection();
+
 const Sidebar = ({ mobileOpen, setMobileOpen }: { mobileOpen?: boolean, setMobileOpen?: (open: boolean) => void }) => {
   const location = useLocation();
   const menuItems = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
-    { icon: Settings, label: 'Profile Settings', path: '/profile' },
     { icon: Gamepad2, label: 'Play to Earn', path: '/earn' },
     { icon: History, label: 'Activity', path: '/transactions' },
     { icon: TrophyIcon, label: 'Leaderboard', path: '/leaderboard' },
     { icon: Users, label: 'Referrals', path: '/referrals', badge: 'NEW' },
-    { icon: Wallet, label: 'Cash Out', path: '/withdraw' },
+    { icon: Wallet, label: 'Withdraw', path: '/withdraw' },
     { icon: Gift, label: 'Bonus Codes', path: '/bonus' },
-    { icon: BookOpen, label: 'Guides', path: '/articles' },
-    { icon: Headphones, label: 'Support', path: '/support' },
-    { icon: ShieldCheck, label: 'Legal & FAQ', path: '/legal' },
+    { icon: Headphones, label: 'Support Center', path: '/support' },
+    { icon: ShieldCheck, label: 'Legal & Ethics', path: '/legal' },
+    { icon: Settings, label: 'Account Settings', path: '/profile' },
   ];
 
   const content = (
@@ -160,35 +188,48 @@ const Sidebar = ({ mobileOpen, setMobileOpen }: { mobileOpen?: boolean, setMobil
 
 const Footer = () => {
   return (
-    <footer className="border-t border-white/5 bg-dark-bg/50 backdrop-blur-3xl pt-16 pb-8 px-6 md:px-12 relative overflow-hidden">
-      <Hero3D particlesOnly />
+    <footer className="border-t border-white/5 bg-[#050507] pt-24 pb-12 px-6 md:px-12 relative overflow-hidden">
       <div className="max-w-7xl mx-auto relative z-10">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
-          <div className="space-y-6">
-            <Link to="/" className="flex items-center gap-2 group">
-              <div className="w-10 h-10 bg-zinc-900 border border-white/10 rounded-xl flex items-center justify-center group-hover:border-primary/50 transition-all">
-                <Gamepad2 className="text-primary w-6 h-6" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-16 mb-24">
+          <div className="space-y-8">
+            <Link to="/" className="flex items-center gap-3 group">
+              <div className="w-12 h-12 bg-zinc-900 border border-white/10 rounded-2xl flex items-center justify-center group-hover:border-primary/50 transition-all shadow-2xl">
+                <Gamepad2 className="text-primary w-7 h-7" />
               </div>
-              <span className="font-display font-bold text-3xl tracking-tighter italic text-white uppercase">D<span className="text-primary">GAMERS</span></span>
+              <span className="font-display font-black text-3xl tracking-tighter text-white uppercase italic">
+                D<span className="text-primary">GAMERS</span>
+              </span>
             </Link>
-            <p className="text-blue-400/80 text-sm leading-relaxed max-w-xs font-medium">
-              The premier reward destination for elite Nigerian gamers. Earn real value for your time and skills.
+            <p className="text-zinc-500 text-sm leading-relaxed max-w-sm font-medium">
+              DGamers Elite is the leading digital rewards platform for the African gaming community. We bridge the gap between passion and earnings through strategic partnerships with global advertising leaders.
             </p>
             <div className="flex items-center gap-4">
-               {[MessageSquare, Send, Zap].map((Icon, i) => (
-                 <a key={i} href="#" className="w-8 h-8 bg-white/5 rounded-lg flex items-center justify-center text-zinc-500 hover:text-white hover:bg-primary/20 transition-all border border-white/5">
-                    <Icon className="w-4 h-4" />
+               {[
+                 { icon: MessageSquare, label: 'Discord', color: 'hover:bg-[#5865F2]/20 hover:text-[#5865F2]' },
+                 { icon: Send, label: 'Telegram', color: 'hover:bg-[#229ED9]/20 hover:text-[#229ED9]' },
+                 { icon: Mail, label: 'Email', color: 'hover:bg-primary/20 hover:text-primary' }
+               ].map((item, i) => (
+                 <a 
+                   key={i} 
+                   href="#" 
+                   className={cn(
+                     "w-10 h-10 bg-white/5 rounded-xl flex items-center justify-center text-zinc-500 transition-all border border-white/5",
+                     item.color
+                   )}
+                   title={item.label}
+                 >
+                    <item.icon className="w-5 h-5" />
                  </a>
                ))}
             </div>
           </div>
 
           <div>
-            <h4 className="text-xs font-black uppercase tracking-[0.2em] text-white mb-6">Platform</h4>
+            <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-400 mb-8 px-1 border-l-2 border-primary">Platform</h4>
             <ul className="space-y-4">
-              {['Earn', 'Leaderboard', 'Withdraw', 'Referrals'].map((item) => (
+              {['Earn Points', 'Leaderboard', 'Withdrawals', 'Referral Program'].map((item) => (
                 <li key={item}>
-                  <Link to={`/${item.toLowerCase()}`} className="text-blue-500/60 hover:text-primary transition-colors text-sm font-bold uppercase tracking-tight italic">
+                  <Link to={`/${item.split(' ')[0].toLowerCase()}`} className="text-zinc-400 hover:text-white transition-colors text-sm font-semibold tracking-tight block w-fit">
                     {item}
                   </Link>
                 </li>
@@ -197,16 +238,16 @@ const Footer = () => {
           </div>
 
           <div>
-            <h4 className="text-xs font-black uppercase tracking-[0.2em] text-white mb-6">Support</h4>
+            <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-400 mb-8 px-1 border-l-2 border-primary">Resources</h4>
             <ul className="space-y-4">
               {[
-                { label: 'Guides', path: '/articles' },
-                { label: 'Support', path: '/support' },
-                { label: 'Legal & FAQ', path: '/legal' },
-                { label: 'Bonus Codes', path: '/bonus' }
+                { label: 'Knowledge Base', path: '/articles' },
+                { label: 'Security Center', path: '/support' },
+                { label: 'Affiliate Terms', path: '/legal' },
+                { label: 'Media Highlights', path: '/bonus' }
               ].map((item) => (
                 <li key={item.label}>
-                  <Link to={item.path} className="text-blue-500/60 hover:text-primary transition-colors text-sm font-bold uppercase tracking-tight italic">
+                  <Link to={item.path} className="text-zinc-400 hover:text-white transition-colors text-sm font-semibold tracking-tight block w-fit">
                     {item.label}
                   </Link>
                 </li>
@@ -214,27 +255,41 @@ const Footer = () => {
             </ul>
           </div>
 
-          <div className="space-y-6">
-            <h4 className="text-xs font-black uppercase tracking-[0.2em] text-white mb-6">Regional Check</h4>
-             <div className="bg-emerald-500/5 border border-emerald-500/20 p-4 rounded-2xl">
-                <div className="flex items-center gap-2 mb-2">
-                   <ShieldCheck className="w-4 h-4 text-emerald-500" />
-                   <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Nigeria Live</span>
+          <div className="space-y-8">
+            <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-400 mb-8 px-1 border-l-2 border-primary">Compliance</h4>
+             <div className="bg-zinc-900/50 border border-white/5 p-6 rounded-3xl space-y-4">
+                <div className="flex items-center gap-3">
+                   <ShieldCheck className="w-5 h-5 text-emerald-500" />
+                   <span className="text-xs font-black text-white uppercase tracking-widest">Verified Exchange</span>
                 </div>
-                <p className="text-[10px] text-zinc-500 leading-relaxed font-medium">
-                  We are currently fully operational in Nigeria. 
-                  All bank transfers and mobile money withdrawals are active.
+                <p className="text-[11px] text-zinc-500 leading-relaxed font-medium">
+                  All transactions are monitored for security. D-Gamers complies with international KYC/AML guidelines for digital rewards platforms.
                 </p>
+                <div className="pt-2 flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                  <span className="text-[9px] font-black text-emerald-500 uppercase tracking-[0.2em]">Systems Operational</span>
+                </div>
              </div>
           </div>
         </div>
 
-        <div className="pt-8 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-4">
-           <p className="text-[10px] text-blue-500/40 font-black uppercase tracking-[0.4em]">© 2026 DGAMERS ELITE PLATFORM</p>
-           <div className="flex items-center gap-8 text-[10px] uppercase font-black tracking-widest text-blue-500/40">
-              <Link to="/legal" className="hover:text-primary transition-colors">Privacy</Link>
-              <Link to="/legal" className="hover:text-primary transition-colors">Terms</Link>
-              <Link to="/legal" className="hover:text-primary transition-colors">Cookies</Link>
+        <div className="pt-12 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-8">
+           <div className="flex flex-col gap-1">
+             <p className="text-[10px] text-zinc-600 font-bold uppercase tracking-[0.2em]">© 2026 DGAMERS ELITE TECHNOLOGY GROUP</p>
+             <p className="text-[9px] text-zinc-700 font-medium">Designed for elite performance. All rights reserved.</p>
+           </div>
+           
+           <div className="flex items-center gap-8">
+              {[
+                { label: 'Privacy Policy', path: '/legal' },
+                { label: 'Terms of Service', path: '/legal' },
+                { label: 'Cookie Policy', path: '/legal' },
+                { label: 'Contact Us', path: '/support' }
+              ].map((link) => (
+                <Link key={link.label} to={link.path} className="text-[10px] uppercase font-black tracking-widest text-zinc-600 hover:text-zinc-400 transition-colors">
+                  {link.label}
+                </Link>
+              ))}
            </div>
         </div>
       </div>
@@ -245,8 +300,8 @@ const Footer = () => {
 const Layout = ({ children }: { children: React.ReactNode }) => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { profile, logout } = useFirebase();
-  
+  const { profile, logout, securityInfo } = useFirebase();
+
   const notifications = [
     { title: 'New Offer wall', msg: 'Lootably added 24 new games!', time: '2m ago', type: 'offer' },
     { title: 'Bonus Code Active', msg: 'Use code "MARCH24" for +10% earnings.', time: '1h ago', type: 'bonus' },
@@ -276,8 +331,13 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <div className="hidden lg:flex items-center gap-2 px-3 py-1 bg-primary/10 border border-primary/20 rounded-full text-[10px] font-bold text-primary uppercase tracking-[0.2em]">
-              <ShieldCheck className="w-3 h-3" /> Nigeria Only
+            <div className="hidden lg:flex flex-col items-end gap-0.5">
+              <div className="flex items-center gap-2 px-3 py-1 bg-primary/10 border border-primary/20 rounded-full text-[10px] font-black text-primary uppercase tracking-[0.2em] italic">
+                <ShieldCheck className="w-3 h-3" /> Verified System
+              </div>
+              <div className="text-[8px] text-zinc-500 font-bold uppercase tracking-widest px-2">
+                {securityInfo ? `${securityInfo.ip} • NO VPN` : 'Checking Security...'}
+              </div>
             </div>
             <div className="flex items-center gap-2 bg-gradient-to-r from-zinc-900 to-black px-4 py-1.5 rounded-full border border-white/5 group relative overflow-hidden">
               <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
@@ -602,115 +662,171 @@ const ProfilePage = () => {
 };
 
 const Dashboard = () => {
-  const { profile } = useFirebase();
+  const { profile, securityInfo } = useFirebase();
   return (
-    <div className="space-y-12">
+    <div className="space-y-24">
       {/* Hero Section */}
-      <section className="relative overflow-hidden rounded-[2rem] border border-white/5 bg-zinc-950 p-8 md:p-16 min-h-[400px] flex items-center group">
-         <div className="absolute inset-0 bg-gradient-to-r from-dark-bg via-transparent to-transparent z-10"></div>
-         <div className="absolute right-0 top-0 bottom-0 w-1/2 opacity-40 grayscale group-hover:opacity-100 group-hover:grayscale-0 transition-all duration-700">
+      <section className="relative min-h-[600px] flex items-center pt-20">
+         <div className="absolute top-0 right-0 w-[60%] h-full pointer-events-none opacity-20 lg:opacity-40 grayscale group-hover:grayscale-0 transition-all duration-1000 overflow-hidden rounded-l-[5rem]">
             <Hero3D />
          </div>
-         <div className="relative z-20 max-w-2xl space-y-6">
-            <motion.div 
-               initial={{ opacity: 0, x: -20 }}
-               animate={{ opacity: 1, x: 0 }}
-               className="inline-flex items-center gap-2 px-3 py-1 bg-primary/10 border border-primary/20 rounded-full text-[10px] font-black text-primary uppercase tracking-[0.3em]"
-            >
-               <Zap className="w-3 h-3 fill-primary" /> Active Boost: +10% Coins
-            </motion.div>
-            <h1 className="text-massive font-heavy italic tracking-tighter text-white uppercase">
-               LEVEL UP <br />
-               <span className="text-zinc-600 group-hover:text-primary transition-colors cursor-default">D-GAMERS</span>
-            </h1>
-            <p className="text-zinc-500 text-lg md:text-xl font-medium max-w-lg leading-relaxed">
-               Welcome, <span className="text-white">{profile?.username}</span>. You are ranked <span className="text-white font-bold italic">#{profile?.stats?.rank || 42}</span> in the Nigerian Elite Tier. 
-               Keep earning to maintain your status.
-            </p>
-            <div className="flex flex-wrap gap-4 pt-4">
-               <Link to="/earn" className="bg-primary hover:bg-primary/90 text-white px-8 py-5 rounded-2xl font-bold uppercase tracking-widest text-xs shadow-2xl shadow-primary/40 flex items-center gap-3 active:scale-95 transition-all">
-                  Launch Quest Center <ArrowRight className="w-4 h-4" />
+         <div className="relative z-20 max-w-4xl space-y-10">
+            <div className="flex flex-wrap gap-4 items-center">
+              <motion.div 
+                 initial={{ opacity: 0, x: -20 }}
+                 animate={{ opacity: 1, x: 0 }}
+                 className="inline-flex items-center gap-3 px-4 py-1.5 bg-primary/10 border border-primary/20 rounded-full text-[10px] font-black text-primary uppercase tracking-[0.3em] shadow-[0_0_20px_rgba(37,99,235,0.15)]"
+              >
+                 <Zap className="w-4 h-4 fill-primary" /> Active Boost: +10% Yield
+              </motion.div>
+              {securityInfo && (
+                <motion.div 
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.1 }}
+                  className="inline-flex items-center gap-3 px-4 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-[10px] font-black text-emerald-500 uppercase tracking-[0.3em] shadow-[0_0_20px_rgba(16,185,129,0.1)]"
+                >
+                  <ShieldCheck className="w-4 h-4" /> Secure Node: {securityInfo.ip}
+                </motion.div>
+              )}
+            </div>
+            
+            <div className="space-y-4">
+               <h1 className="text-massive font-heavy italic tracking-tighter text-white uppercase leading-[0.8] drop-shadow-2xl">
+                  ELITE <br />
+                  <span className="text-zinc-700">REWARDS.</span>
+               </h1>
+               <p className="text-zinc-400 text-xl md:text-2xl font-medium max-w-2xl leading-relaxed">
+                  Welcome back, <span className="text-white italic">{profile?.username}</span>. You are currently operating at <span className="text-primary font-black italic">OPTIMAL</span> capacity. 
+                  Monitor your earnings and scale your influence.
+               </p>
+            </div>
+
+            <div className="flex flex-wrap gap-6 pt-6">
+               <Link to="/earn" className="btn-primary flex items-center gap-4 py-5 px-10">
+                  Enter Earn Hub <ArrowRight className="w-5 h-5" />
                </Link>
-               <Link to="/withdraw" className="bg-white/5 hover:bg-white/10 backdrop-blur-md text-white px-8 py-5 rounded-2xl font-bold uppercase tracking-widest text-xs border border-white/10 active:scale-95 transition-all">
-                  Cash Out Earnings
+               <Link to="/withdraw" className="btn-secondary py-5 px-10 flex items-center gap-4">
+                  Request Settlement <Bitcoin className="w-5 h-5 text-primary/50" />
                </Link>
+            </div>
+
+            <div className="pt-12 grid grid-cols-2 md:grid-cols-4 gap-8 border-t border-white/5 max-w-3xl">
+               {[
+                  { value: '₦12.5M', label: 'Total Volume' },
+                  { value: '42K+', label: 'Verified Nodes' },
+                  { value: '0.2s', label: 'Sync Speed' },
+                  { value: '99.9%', label: 'Uptime' }
+               ].map((stat, i) => (
+                  <div key={i} className="space-y-1">
+                     <div className="text-xl font-display font-black tracking-tighter text-white uppercase italic">{stat.value}</div>
+                     <div className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">{stat.label}</div>
+                  </div>
+               ))}
             </div>
          </div>
       </section>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-         {[
-           { label: 'Current Balance', value: `$${(profile?.coins ? profile.coins / 1000 : 0).toFixed(2)}`, sub: `${profile?.coins || 0} Coins`, color: 'text-primary' },
-           { label: 'Total Earnings', value: '$842.50', sub: 'Lifetime Profit', color: 'text-emerald-500' },
-           { label: 'Active Quests', value: '12', sub: '4 Ending Soon', color: 'text-amber-500' },
-           { label: 'Quest Rank', value: profile?.tier?.toUpperCase() || 'ELITE', sub: 'Top 5% Players', color: 'text-indigo-400' },
-         ].map((stat, i) => (
-            <motion.div 
-               key={stat.label}
-               initial={{ opacity: 0, y: 20 }}
-               animate={{ opacity: 1, y: 0 }}
-               transition={{ delay: i * 0.1 }}
-               className="glass-card p-8 border-white/5 relative group overflow-hidden"
-            >
-               <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-20 transition-opacity">
-                  <TrendingUp className="w-16 h-16" />
-               </div>
-               <span className="text-[10px] text-zinc-500 font-black uppercase tracking-widest block mb-4">{stat.label}</span>
-               <div className="space-y-1">
-                  <h3 className={cn("text-3xl font-black font-display tracking-tighter", stat.color)}>{stat.value}</h3>
-                  <p className="text-zinc-500 text-xs font-bold italic">{stat.sub}</p>
-               </div>
-            </motion.div>
-         ))}
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-         <div className="lg:col-span-2 space-y-8">
-            <div className="flex items-center justify-between">
-               <h2 className="text-2xl font-heavy italic tracking-tighter uppercase">Featured Partner Offerwalls</h2>
-               <Link to="/earn" className="text-primary text-xs font-black uppercase tracking-widest hover:underline">View All</Link>
+      {/* Stats Dashboard */}
+      <section className="space-y-10">
+         <div className="flex items-center justify-between border-b border-white/10 pb-6">
+            <h2 className="text-xs font-black uppercase tracking-[0.5em] text-zinc-500">Node Performance</h2>
+            <div className="flex items-center gap-6 text-[10px] font-black uppercase tracking-widest text-zinc-700">
+               <span className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span> Active Stream</span>
+               <span className="flex items-center gap-2 italic">Refreshes every 60s</span>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              {[
-                { name: 'Revenue Universe', img: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=200' },
-                { name: 'Lootably', img: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?q=80&w=200' },
-                { name: 'AdGate Media', img: 'https://images.unsplash.com/photo-1493711662062-fa541adb3fc8?q=80&w=200' },
-              ].map((partner) => (
-                <Link key={partner.name} to="/earn" className="glass-card p-6 flex flex-col items-center justify-center text-center group cursor-pointer hover:border-primary/50 transition-all border-white/5 bg-zinc-900/30 backdrop-blur-sm overflow-hidden relative">
-                  <div className="w-16 h-16 bg-zinc-800 rounded-2xl mb-4 group-hover:scale-110 transition-transform flex items-center justify-center border border-white/10 overflow-hidden relative z-10">
-                    <img src={partner.img} alt={partner.name} className="w-full h-full object-cover" />
+         </div>
+         
+         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            {[
+              { label: 'Available Balance', value: `₦${(profile?.coins ? profile.coins : 0).toLocaleString()}`, sub: `${profile?.coins || 0} Elite Coins`, icon: Wallet, color: 'text-primary' },
+              { label: 'Network Payouts', value: '₦842,500', sub: 'Lifetime Volume', icon: TrendingUp, color: 'text-emerald-500' },
+              { label: 'Active Sessions', value: '03', sub: '2 Partners Connected', icon: Clock, color: 'text-amber-500' },
+              { label: 'Account Tier', value: profile?.tier?.toUpperCase() || 'ELITE GUEST', sub: 'Upgrade for +15% Boost', icon: TrophyIcon, color: 'text-indigo-400' },
+            ].map((stat, i) => (
+               <motion.div 
+                  key={stat.label}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.1 }}
+                  className="glass-card p-10 border-white/5 relative group cursor-default"
+               >
+                  <div className="absolute top-8 right-8 text-white/5 group-hover:text-primary/20 transition-colors">
+                     <stat.icon className="w-12 h-12" />
                   </div>
-                  <h3 className="font-bold text-sm tracking-tight relative z-10 uppercase italic">{partner.name}</h3>
-                </Link>
-              ))}
+                  <span className="text-[10px] text-zinc-600 font-bold uppercase tracking-[0.2em] block mb-6">{stat.label}</span>
+                  <div className="space-y-2">
+                     <h3 className={cn("text-3xl font-black font-display tracking-tighter italic uppercase underline decoration-primary/20 decoration-4 underline-offset-8", stat.color)}>{stat.value}</h3>
+                     <p className="text-zinc-500 text-[10px] font-bold tracking-widest uppercase">{stat.sub}</p>
+                  </div>
+               </motion.div>
+            ))}
+         </div>
+      </section>
+
+      {/* Trust & Activity */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+         <div className="lg:col-span-2 space-y-10">
+            <div className="flex items-center justify-between pb-4 border-b border-white/5">
+                <h2 className="text-sm font-black uppercase tracking-[0.3em] text-white italic">Recent Partner Verifications</h2>
+                <Link to="/earn" className="text-[10px] font-black text-primary hover:text-white transition-colors uppercase tracking-widest">Connect New Node</Link>
+            </div>
+            
+            <div className="space-y-4">
+               {[
+                 { user: 'Storm7', flow: 'Lootably Rewards', amount: '₦2,400', time: '2m ago', status: 'Verified' },
+                 { user: 'GamerX', flow: 'Revenue Universe', amount: '₦850', time: '12m ago', status: 'Processing' },
+                 { user: 'CryptoP', flow: 'AdGate Gateway', amount: '₦1,200', time: '24m ago', status: 'Verified' },
+                 { user: 'MuizI', flow: 'BitLabs Global', amount: '₦450', time: '45m ago', status: 'Verified' },
+               ].map((item, i) => (
+                 <div key={i} className="flex items-center justify-between p-6 bg-zinc-950/20 border border-white/5 rounded-2xl hover:border-primary/20 transition-all group">
+                    <div className="flex items-center gap-6">
+                       <div className="w-12 h-12 rounded-xl bg-zinc-900 border border-white/10 flex items-center justify-center font-black text-primary italic">0{i+1}</div>
+                       <div>
+                          <h4 className="text-sm font-bold text-white uppercase tracking-tight group-hover:text-primary transition-colors">{item.user}</h4>
+                          <p className="text-[10px] text-zinc-600 font-bold uppercase tracking-widest">{item.flow}</p>
+                       </div>
+                    </div>
+                    <div className="text-right">
+                       <div className="text-lg font-display font-black text-white italic">{item.amount}</div>
+                       <div className={cn("text-[8px] font-black uppercase tracking-widest", item.status === 'Verified' ? 'text-emerald-500' : 'text-amber-500')}>{item.status} • {item.time}</div>
+                    </div>
+                 </div>
+               ))}
             </div>
          </div>
 
-         <div className="space-y-8">
-            <h2 className="text-2xl font-heavy italic tracking-tighter uppercase">Live System Feed</h2>
-            <div className="glass-card p-6 border-white/5 divide-y divide-white/5">
-                {[
-                  { user: 'Storm7', amount: '$5.00', partner: 'RevU', time: 'Just now' },
-                  { user: 'GamerX', amount: '$1.25', partner: 'Lootably', time: '2m ago' },
-                  { user: 'CryptoP', amount: '$15.00', partner: 'AdGate', time: '5m ago' },
-                  { user: 'MuizI', amount: '$2.50', partner: 'BitLabs', time: '8m ago' },
-                ].map((feed, i) => (
-                  <div key={i} className="py-4 first:pt-0 last:pb-0 flex items-center justify-between group cursor-default">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-[10px] font-bold text-primary italic uppercase">
-                        {feed.user[0]}
-                      </div>
-                      <div>
-                        <p className="text-xs font-bold text-white group-hover:text-primary transition-colors">{feed.user}</p>
-                        <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-widest">{feed.partner} • {feed.time}</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-xs font-black text-emerald-500 italic block">{feed.amount}</span>
-                    </div>
+         <div className="space-y-10">
+            <div className="flex items-center justify-between pb-4 border-b border-white/5">
+                <h2 className="text-sm font-black uppercase tracking-[0.3em] text-white italic">Platform Pulse</h2>
+            </div>
+            
+            <div className="glass-card p-8 border-primary/20 bg-primary/5 space-y-8">
+               <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
+                     <Bell className="w-5 h-5 text-primary" />
                   </div>
-                ))}
+                  <div>
+                     <h4 className="text-xs font-black text-white uppercase tracking-widest">Network Alert</h4>
+                     <p className="text-[10px] text-zinc-500 font-medium italic">Torox Boost Active: +15% on All Game Nodes</p>
+                  </div>
+               </div>
+
+               <div className="space-y-4">
+                  {[
+                    'Server synchronization complete.',
+                    'Direct bank settlement portal active.',
+                    'Gift code redundancy verified.',
+                    'New audit layer deployed.'
+                  ].map((tip, i) => (
+                    <div key={i} className="flex items-start gap-3">
+                       <CheckCircle2 className="w-3 h-3 text-emerald-500 mt-0.5 shrink-0" />
+                       <p className="text-[10px] text-zinc-400 leading-relaxed italic font-medium">{tip}</p>
+                    </div>
+                  ))}
+               </div>
+               
+               <button className="w-full bg-primary hover:bg-blue-600 text-white font-bold uppercase tracking-widest text-[9px] py-3 rounded-lg transition-all shadow-[0_0_20px_var(--color-primary-glow)] hover:scale-[1.02] active:scale-[0.98] border border-white/10">View Full Audit Log</button>
             </div>
          </div>
       </div>
@@ -728,126 +844,247 @@ const EarnPage = () => {
   };
 
   return (
-    <div className="space-y-12">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-        <div className="lg:col-span-2 space-y-6">
-          <h1 className="text-5xl font-black font-display italic tracking-tighter uppercase leading-[0.9]">
-            EARN <span className="text-primary">NO LIMITS.</span>
-          </h1>
-          <p className="text-zinc-400 text-lg leading-relaxed">
-            Choose a partner offerwall to discover thousands of apps, videos, and surveys. 
-            All earnings are tracked in real-time and converted instantly.
-          </p>
+    <div className="space-y-24 pb-20">
+      {/* Header Section */}
+      <div className="relative">
+        <div className="absolute -top-24 right-0 w-96 h-96 bg-primary/10 blur-[120px] rounded-full pointer-events-none" />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+          <div className="space-y-8">
+            <div className="inline-flex items-center gap-3 px-4 py-1.5 bg-zinc-900 border border-white/10 rounded-full">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">Live Partner Network</span>
+            </div>
+            <h1 className="text-massive font-heavy italic tracking-tighter text-white uppercase leading-[0.8] mb-4">
+              CHOOSE <br />
+              <span className="text-primary italic">YOUR PATH.</span>
+            </h1>
+            <p className="text-zinc-600 text-lg leading-relaxed max-w-xl font-medium">
+              Access the largest offerwall network in Africa. We've optimized every endpoint to ensure the highest conversion rates for Nigerian traffic.
+            </p>
+            
+            <div className="flex flex-wrap gap-6 text-[10px] font-black uppercase tracking-[0.3em] text-zinc-700">
+               <div className="flex items-center gap-2 px-4 py-2 border border-zinc-900 rounded-lg">
+                  <ShieldCheck className="w-3 h-3 text-primary" /> Instant Tracking
+               </div>
+               <div className="flex items-center gap-2 px-4 py-2 border border-zinc-900 rounded-lg">
+                  <TrendingUp className="w-3 h-3 text-primary" /> Daily Boosts
+               </div>
+               <div className="flex items-center gap-2 px-4 py-2 border border-zinc-900 rounded-lg">
+                  <MessageSquare className="w-3 h-3 text-primary" /> 24/7 Support
+               </div>
+            </div>
+          </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-             <div className="glass-card p-6 border-white/5 bg-zinc-900/50">
-                <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-4">Official Rate</h3>
-                <div className="flex items-end gap-3">
-                   <div className="text-3xl font-black font-display italic">1,000 COINS</div>
-                   <div className="text-zinc-600 mb-1 font-bold">=</div>
-                   <div className="text-3xl font-black font-display italic text-primary">₦1,000.00</div>
+          <div className="grid grid-cols-2 gap-4">
+             {[
+               { label: 'Total Paid Out', value: '₦12.4M', icon: Wallet },
+               { label: 'Active Users', value: '42K+', icon: Users },
+               { label: 'Network Points', value: '8.5B', icon: Zap },
+               { label: 'Partner Siphons', value: '150+', icon: Gamepad2 }
+             ].map((stat, i) => (
+                <div key={i} className="glass-card p-6 border-white/5 bg-zinc-950/20">
+                   <stat.icon className="w-5 h-5 text-primary/50 mb-4" />
+                   <div className="text-3xl font-display font-black tracking-tighter text-white">{stat.value}</div>
+                   <div className="text-[10px] font-black text-zinc-600 uppercase tracking-widest mt-1">{stat.label}</div>
                 </div>
-                <p className="text-[11px] text-zinc-500 mt-4 leading-relaxed font-medium capitalize">
-                  We use a direct 1:1 ratio for Nigerian Naira. earn 1 coin, get ₦1. 
-                  Min. Cashout is 1,000 coins (₦1,000).
-                </p>
-             </div>
-             <div className="glass-card p-6 border-white/5 bg-zinc-900/50">
-                <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-4">NIGERIA ONLY</h3>
-                <div className="flex items-center gap-3">
-                   <ShieldCheck className="w-8 h-8 text-emerald-500" />
-                   <div className="text-lg font-bold text-zinc-300">Verified Platform</div>
-                </div>
-                <p className="text-[11px] text-zinc-500 mt-4 leading-relaxed font-medium">
-                  We exclusively serve the Nigerian gaming community. 
-                  Direct bank transfers to Zenith, GTB, Access, and more.
-                </p>
-             </div>
+             ))}
           </div>
         </div>
+      </div>
 
-        <div className="glass-card p-8 border-primary/20 bg-primary/5 relative overflow-hidden">
-           <div className="relative z-10">
-             <h3 className="text-sm font-bold uppercase tracking-widest mb-6 flex items-center gap-2">
-                <MousePointer2 className="w-4 h-4 text-primary" /> How to Earn
-             </h3>
-             <ul className="space-y-6">
-                {[
-                  { step: '01', title: 'Choose Partner', desc: 'Select an offerwall like Lootably or RevU below.' },
-                  { step: '02', title: 'Complete Tasks', desc: 'Download games or answer surveys as directed.' },
-                  { step: '03', title: 'Verify Flow', desc: 'Coins appear in your balance after partner approval.' },
-                  { step: '04', title: 'Cash Out', desc: 'Withdraw directly to your Nigerian bank account.' },
-                ].map((item) => (
-                  <li key={item.step} className="flex gap-4">
-                     <span className="text-xs font-black text-primary font-mono mt-1 opacity-50">{item.step}</span>
-                     <div>
-                        <h4 className="text-sm font-bold text-white mb-1 uppercase tracking-tight">{item.title}</h4>
-                        <p className="text-xs text-zinc-500 leading-relaxed">{item.desc}</p>
-                     </div>
-                  </li>
-                ))}
-             </ul>
+      {/* Main Partners */}
+      <section className="space-y-12">
+        <div className="flex items-end justify-between border-b border-white/5 pb-8">
+           <div className="space-y-2">
+              <h2 className="text-xs font-black uppercase tracking-[0.4em] text-primary">Certified Partners</h2>
+              <p className="text-3xl font-display font-black tracking-tighter text-white italic uppercase">OFFERWALL MARKETPLACE</p>
            </div>
+           <p className="text-zinc-600 text-sm hidden md:block max-w-xs text-right italic font-medium">
+             Select a provider based on your device and region for optimal payouts.
+           </p>
         </div>
-      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {[
-          { name: 'Revenue Universe', payout: 'High', bonus: '+10%', color: 'border-blue-500/20', img: 'https://images.unsplash.com/photo-1580234811497-9bd7fd2f357d?w=300&auto=format' },
-          { name: 'Lootably', payout: 'Instant', bonus: 'Featured', color: 'border-emerald-500/20', img: 'https://images.unsplash.com/photo-1552824734-80467882ff24?w=300&auto=format' },
-          { name: 'AdGate Media', payout: 'High', bonus: '+5%', color: 'border-purple-500/20', img: 'https://images.unsplash.com/photo-1614332287897-cdc485fa562d?w=300&auto=format' },
-          { name: 'BitLabs', payout: 'Surveys', bonus: 'New', color: 'border-cyan-500/20', img: 'https://images.unsplash.com/photo-1551269901-5c5e14c25df7?w=300&auto=format' },
-          { name: 'AdTally', payout: 'Videos', bonus: '+15%', color: 'border-red-500/20', img: 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=300&auto=format' },
-          { name: 'Timewall', payout: 'Microtasks', bonus: 'Active', color: 'border-amber-500/20', img: 'https://images.unsplash.com/photo-1612287230202-1ff1d85d1bdf?w=300&auto=format' },
-        ].map((partner) => (
-          <motion.div 
-            whileHover={{ y: -5 }}
-            key={partner.name} 
-            className={cn("glass-card p-6 cursor-pointer border hover:border-primary/50 transition-all group overflow-hidden relative", partner.color)}
-          >
-            <div className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity">
-              <img src={partner.img} alt="" className="w-full h-full object-cover" />
-            </div>
-            <div className="flex justify-between items-start mb-6 relative z-10">
-              <div className="w-14 h-14 bg-zinc-800 rounded-xl overflow-hidden border border-white/5">
-                <img src={partner.img} alt={partner.name} className="w-full h-full object-cover" />
-              </div>
-              <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-1 bg-white/5 rounded italic text-zinc-400">{partner.bonus}</span>
-            </div>
-            <h3 className="text-xl font-bold mb-1 relative z-10 font-display italic">{partner.name}</h3>
-            <p className="text-zinc-500 text-[10px] uppercase tracking-[0.2em] font-bold mb-4 relative z-10">{partner.payout} Payouts</p>
-            <button className="w-full bg-white/5 hover:bg-white/10 py-3 rounded-xl text-xs font-bold border border-white/5 transition-all relative z-10 uppercase tracking-widest group-hover:bg-primary group-hover:border-primary transition-all duration-300">Open Offerwall</button>
-          </motion.div>
-        ))}
-      </div>
-
-      <div>
-        <h2 className="text-2xl font-bold mb-6 font-display italic tracking-tight">Top Featured Games</h2>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {[
-            { name: 'Raid: Shadow Legends', reward: '$12.50', img: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=200&auto=format&fit=crop' },
-            { name: 'Mafia City', reward: '$8.20', img: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?q=80&w=200&auto=format&fit=crop' },
-            { name: 'World of Tanks', reward: '$5.50', img: 'https://images.unsplash.com/photo-1493711662062-fa541adb3fc8?q=80&w=200&auto=format&fit=crop' },
-            { name: 'Rise of Kingdoms', reward: '$15.00', img: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=200&auto=format&fit=crop' },
-            { name: 'Star Trek Fleet', reward: '$9.00', img: 'https://images.unsplash.com/photo-1552824734-80467882ff24?q=80&w=200&auto=format&fit=crop' },
-          ].map((game) => (
-            <div key={game.name} onClick={() => handleTaskComplete(game)} className="glass-card overflow-hidden group cursor-pointer border border-white/5 hover:border-primary/20 transition-all">
-              <div className="aspect-[3/4] bg-zinc-800 relative overflow-hidden">
-                 <img src={game.img} alt={game.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                 <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center p-4">
-                    <span className="bg-primary text-white text-[10px] font-black px-4 py-2 rounded-lg uppercase tracking-widest shadow-2xl">Claim Reward</span>
+            { 
+              name: 'Revenue Universe', 
+              desc: 'High-paying surveys and free trials. Best for desktop users.',
+              payout: '1.5x Multiplier', 
+              tags: ['Desktop', 'Survey'],
+              color: 'bg-blue-600',
+              img: 'https://images.unsplash.com/photo-1580234811497-9bd7fd2f357d?w=300&auto=format' 
+            },
+            { 
+              name: 'Lootably', 
+              desc: 'Premium game offers and micro-tasks. Fastest tracking in the industry.',
+              payout: 'Instant Credit', 
+              tags: ['Mobile', 'App'],
+              color: 'bg-emerald-600',
+              img: 'https://images.unsplash.com/photo-1552824734-80467882ff24?w=300&auto=format',
+              featured: true
+            },
+            { 
+              name: 'AdGate Media', 
+              desc: 'Diverse range of tasks from surveys to registrations. Highly reliable.',
+              payout: 'High Volume', 
+              tags: ['Video', 'Global'],
+              color: 'bg-purple-600',
+              img: 'https://images.unsplash.com/photo-1614332287897-cdc485fa562d?w=300&auto=format' 
+            },
+            { 
+              name: 'BitLabs', 
+              desc: 'Specialized survey panel with global reach and high acceptance rates.',
+              payout: 'Unlimited', 
+              tags: ['Survey', 'Global'],
+              color: 'bg-cyan-600',
+              img: 'https://images.unsplash.com/photo-1551269901-5c5e14c25df7?w=300&auto=format' 
+            },
+            { 
+              name: 'Torox', 
+              desc: 'Massive library of game offers with competitive rates.',
+              payout: '10K+ Offers', 
+              tags: ['Games', 'Mobile'],
+              color: 'bg-red-600',
+              img: 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=300&auto=format' 
+            },
+            { 
+              name: 'Timewall', 
+              desc: 'Simple micro-tasks and social media shares. Easy to start.',
+              payout: 'Easy Flow', 
+              tags: ['Social', 'Web'],
+              color: 'bg-amber-600',
+              img: 'https://images.unsplash.com/photo-1612287230202-1ff1d85d1bdf?w=300&auto=format' 
+            },
+          ].map((partner) => (
+            <motion.div 
+              whileHover={{ y: -8, scale: 1.02 }}
+              key={partner.name} 
+              className="glass-card flex flex-col group overflow-hidden border-white/5 hover:border-primary/40 relative"
+            >
+              <div className="h-48 relative overflow-hidden bg-zinc-900 border-b border-white/5">
+                 <img src={partner.img} alt={partner.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 opacity-60 grayscale group-hover:grayscale-0 group-hover:opacity-100" />
+                 <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 to-transparent" />
+                 <div className="absolute top-4 left-4 flex gap-2">
+                    {partner.tags.map(tag => (
+                      <span key={tag} className="bg-black/80 backdrop-blur-md text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded border border-white/5 text-zinc-300">{tag}</span>
+                    ))}
                  </div>
-                 <div className="absolute top-2 right-2 bg-primary px-2 py-1 rounded-md shadow-lg shadow-primary/20 text-[10px] font-bold">
-                   {game.reward}
-                 </div>
+                 {partner.featured && (
+                   <div className="absolute top-4 right-4 bg-primary text-white text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded shadow-lg shadow-primary/30">FEATURED</div>
+                 )}
               </div>
-              <div className="p-3 text-center relative bg-zinc-900 border-t border-white/5">
-                <h4 className="text-xs font-bold leading-tight line-clamp-1">{game.name}</h4>
+              <div className="p-6 flex-1 flex flex-col">
+                <div className="flex justify-between items-start mb-4">
+                  <h3 className="text-2xl font-display font-black tracking-tighter text-white italic uppercase group-hover:text-primary transition-colors">{partner.name}</h3>
+                   <div className={cn("w-2 h-2 rounded-full", partner.color)} />
+                </div>
+                <p className="text-zinc-500 text-xs leading-relaxed mb-6 font-medium">{partner.desc}</p>
+                <div className="mt-auto pt-6 border-t border-white/5 flex items-center justify-between">
+                   <div className="flex flex-col">
+                      <span className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">Rate</span>
+                      <span className="text-sm font-black text-primary italic uppercase tracking-tight">{partner.payout}</span>
+                   </div>
+                   <button className="bg-primary hover:bg-blue-600 text-white font-black uppercase tracking-widest text-[9px] py-2 px-6 rounded-lg transition-all shadow-lg hover:shadow-primary/20">
+                      Open Partner wall
+                   </button>
+                </div>
               </div>
-            </div>
+            </motion.div>
           ))}
         </div>
-      </div>
+      </section>
+
+      {/* Featured Single Offers */}
+      <section className="space-y-12">
+        <div className="flex items-end justify-between border-b border-white/5 pb-8">
+           <div className="space-y-2">
+              <h2 className="text-xs font-black uppercase tracking-[0.4em] text-primary">Direct Highlights</h2>
+              <p className="text-3xl font-display font-black tracking-tighter text-white italic uppercase">HOT CAMPAIGNS</p>
+           </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[
+            { name: 'Raid: Shadow Legends', reward: '₦12,500', company: 'Lootably', img: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=400&auto=format&fit=crop' },
+            { name: 'Mafia City: Level 20', reward: '₦8,200', company: 'AdGate', img: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?q=80&w=400&auto=format&fit=crop' },
+            { name: 'Rise of Kingdoms', reward: '₦15,000', company: 'RevU', img: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=400&auto=format&fit=crop' },
+            { name: 'Star Trek Fleet', reward: '₦9,000', company: 'Torox', img: 'https://images.unsplash.com/photo-1552824734-80467882ff24?q=80&w=400&auto=format&fit=crop' },
+          ].map((game) => (
+            <motion.div 
+               whileHover={{ scale: 1.02 }}
+               key={game.name} 
+               onClick={() => handleTaskComplete(game)} 
+               className="glass-card overflow-hidden group cursor-pointer border-white/5 hover:border-primary/20 bg-zinc-950/20"
+            >
+              <div className="aspect-video bg-zinc-900 relative">
+                 <img src={game.img} alt={game.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 opacity-80" />
+                 <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-transparent to-transparent opacity-60" />
+                 <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest border border-white/5 text-zinc-400">
+                    {game.company}
+                 </div>
+              </div>
+              <div className="p-4 space-y-4">
+                <div>
+                   <h4 className="text-sm font-bold text-white mb-1 line-clamp-1 italic uppercase tracking-tight">{game.name}</h4>
+                   <div className="text-[10px] font-black text-primary bg-primary/10 w-fit px-2 py-0.5 rounded italic">BOOSTED RATE</div>
+                </div>
+                <div className="flex items-center justify-between pt-4 border-t border-white/5">
+                   <div className="text-xl font-display font-black italic tracking-tighter text-white">{game.reward}</div>
+                   <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center group-hover:bg-primary transition-colors">
+                      <ArrowRight className="w-4 h-4 text-white" />
+                   </div>
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </section>
+
+      {/* Trust & Verification Section */}
+      <section className="glass-card p-12 overflow-hidden relative">
+         <div className="absolute -right-24 top-0 w-96 h-full bg-primary/5 -skew-x-12" />
+         <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+            <div className="space-y-6">
+               <h2 className="text-massive font-heavy italic tracking-tighter text-white uppercase leading-[0.8]">
+                  ELITE <br />
+                  <span className="text-primary italic">STANDARDS.</span>
+               </h2>
+               <p className="text-zinc-500 text-sm leading-relaxed max-w-sm font-medium">
+                  We maintain strict partnerships with global offerwall providers. Our direct integrations ensure seamless tracking and daily payouts with zero intermediaries.
+               </p>
+               <div className="flex gap-4">
+                  <div className="w-16 h-12 bg-white/5 rounded border border-white/10 flex items-center justify-center opacity-40 hover:opacity-100 transition-opacity">
+                     <ShieldCheck className="w-6 h-6" />
+                  </div>
+                  <div className="w-16 h-12 bg-white/5 rounded border border-white/10 flex items-center justify-center opacity-40 hover:opacity-100 transition-opacity">
+                     <Lock className="w-6 h-6" />
+                  </div>
+                  <div className="w-16 h-12 bg-white/5 rounded border border-white/10 flex items-center justify-center opacity-40 hover:opacity-100 transition-opacity">
+                     <Headphones className="w-6 h-6" />
+                  </div>
+               </div>
+            </div>
+            
+            <div className="grid grid-cols-1 gap-4">
+               {[
+                  { title: 'Global Compliance', desc: 'Secure APIs following standard industry protocols.' },
+                  { title: 'Fraud Protection', desc: 'Sift and Shield implementations on all transactional layers.' },
+                  { title: 'Partner Loyalty', desc: 'Official direct publisher status with top network providers.' }
+               ].map((item, i) => (
+                  <div key={i} className="flex gap-4 p-4 rounded-2xl bg-white/5 border border-white/5">
+                     <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-black font-mono shrink-0 italic">{i+1}</div>
+                     <div>
+                        <h4 className="text-sm font-bold text-white mb-1 uppercase tracking-tight">{item.title}</h4>
+                        <p className="text-[11px] text-zinc-500 leading-relaxed italic">{item.desc}</p>
+                     </div>
+                  </div>
+               ))}
+            </div>
+         </div>
+      </section>
     </div>
   );
 };
@@ -1263,32 +1500,42 @@ const ArticlesPage = () => (
 
 const SupportPage = () => {
   return (
-    <div className="space-y-12">
-      <div className="max-w-3xl">
-        <h1 className="text-5xl font-black font-display italic tracking-tight uppercase leading-[0.9] mb-4">
-          NEED <span className="text-primary">HELP?</span>
-        </h1>
-        <p className="text-zinc-400 text-lg">Our dedicated team is ready to assist you with any questions or technical issues you may encounter.</p>
+    <div className="space-y-16 max-w-5xl mx-auto pb-20">
+      <div className="text-center space-y-4">
+         <div className="inline-flex items-center gap-2 px-3 py-1 bg-zinc-900 border border-white/10 rounded-full text-[10px] font-black text-zinc-500 uppercase tracking-[0.3em]">
+            <Headphones className="w-3 h-3 text-primary" /> Support Center • 24/7
+         </div>
+         <h1 className="text-massive font-heavy italic tracking-tighter text-white uppercase leading-[0.8]">
+            OPERATIONAL <br />
+            <span className="text-primary italic">ASSISTANCE.</span>
+         </h1>
+         <p className="text-zinc-500 text-lg font-medium max-w-xl mx-auto italic">
+            Technical queries and node resolution. Our specialists are on standby 
+            to ensure your earning stream remains uninterrupted.
+         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="glass-card p-10 bg-gradient-to-br from-zinc-900 to-black border-white/5 flex flex-col items-center text-center group"
+          className="glass-card p-12 bg-gradient-to-br from-zinc-900/50 to-black border-white/5 flex flex-col items-center text-center group relative overflow-hidden"
         >
-          <div className="w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center mb-8 group-hover:scale-110 transition-transform">
-             <Send className="w-10 h-10 text-primary" />
+          <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-20 transition-opacity">
+            <Send className="w-32 h-32" />
           </div>
-          <h2 className="text-2xl font-bold mb-4 font-display italic tracking-tight uppercase">Telegram Support</h2>
-          <p className="text-zinc-500 mb-8 max-w-[240px]">Join our community and get instant help from our moderators.</p>
+          <div className="w-24 h-24 bg-primary/10 rounded-3xl flex items-center justify-center mb-8 group-hover:scale-110 transition-transform border border-primary/20">
+             <Send className="w-12 h-12 text-primary" />
+          </div>
+          <h2 className="text-2xl font-black mb-4 font-display italic tracking-tight uppercase">Telegram Network</h2>
+          <p className="text-zinc-600 text-sm font-medium mb-10 max-w-[240px] italic">Rapid response community for immediate technical synchronization.</p>
           <a 
             href="https://t.me/Dgamerssupport" 
             target="_blank" 
             rel="noopener noreferrer"
-            className="w-full bg-primary hover:bg-primary/90 text-white font-bold py-4 rounded-2xl transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2"
+            className="w-full bg-primary hover:bg-blue-600 text-white font-black text-[10px] uppercase tracking-widest py-5 rounded-2xl transition-all shadow-xl shadow-primary/20 flex items-center justify-center gap-3 italic border border-white/10"
           >
-            Open Telegram
+            Access Community Hub
             <ExternalLink className="w-4 h-4" />
           </a>
         </motion.div>
@@ -1297,98 +1544,43 @@ const SupportPage = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="glass-card p-10 bg-gradient-to-br from-zinc-900 to-black border-white/5 flex flex-col items-center text-center group"
+          className="glass-card p-12 bg-gradient-to-br from-zinc-900/50 to-black border-white/5 flex flex-col items-center text-center group relative overflow-hidden"
         >
-          <div className="w-20 h-20 bg-[#25D366]/10 rounded-3xl flex items-center justify-center mb-8 group-hover:scale-110 transition-transform">
-             <MessageSquare className="w-10 h-10 text-[#25D366]" />
+          <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-20 transition-opacity">
+            <MessageSquare className="w-32 h-32" />
           </div>
-          <h2 className="text-2xl font-bold mb-4 font-display italic tracking-tight uppercase">WhatsApp Chat</h2>
-          <p className="text-zinc-500 mb-8 max-w-[240px]">Direct business support via WhatsApp for account issues.</p>
+          <div className="w-24 h-24 bg-emerald-500/10 rounded-3xl flex items-center justify-center mb-8 group-hover:scale-110 transition-transform border border-emerald-500/20">
+             <MessageSquare className="w-12 h-12 text-emerald-500" />
+          </div>
+          <h2 className="text-2xl font-black mb-4 font-display italic tracking-tight uppercase">Direct WhatsApp</h2>
+          <p className="text-zinc-600 text-sm font-medium mb-10 max-w-[240px] italic">Encrypted one-on-one channel for sensitive account resolution.</p>
           <a 
             href="https://wa.me/2349034089737" 
             target="_blank" 
             rel="noopener noreferrer"
-            className="w-full bg-[#25D366] hover:bg-[#25D366]/90 text-white font-bold py-4 rounded-2xl transition-all shadow-lg shadow-[#25D366]/20 flex items-center justify-center gap-2"
+            className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-black text-[10px] uppercase tracking-widest py-5 rounded-2xl transition-all shadow-xl shadow-emerald-500/20 flex items-center justify-center gap-3 italic border border-white/10"
           >
-            Chat on WhatsApp
+            Initiate Secure Chat
             <ExternalLink className="w-4 h-4" />
           </a>
         </motion.div>
       </div>
 
-      <div className="max-w-4xl mx-auto">
-        <div className="glass-card p-10 border-white/5 bg-zinc-900/50">
-           <div className="flex items-center gap-3 mb-8">
-              <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center">
-                 <Mail className="text-primary w-6 h-6" />
+      <div className="max-w-4xl mx-auto w-full">
+        <div className="glass-card p-12 border-white/5 bg-zinc-900/20 relative group">
+           <div className="flex flex-col md:flex-row items-center gap-10">
+              <div className="w-20 h-20 bg-zinc-900 border border-white/10 rounded-2xl flex items-center justify-center shrink-0">
+                 <Mail className="text-primary w-10 h-10" />
               </div>
-              <div>
-                 <h2 className="text-2xl font-bold font-display italic leading-none">DIRECT MESSAGE</h2>
-                 <p className="text-zinc-500 text-xs mt-1 uppercase tracking-widest font-bold">Powered by Netlify Forms</p>
+              <div className="flex-1 text-center md:text-left space-y-2">
+                 <h4 className="text-lg font-black text-white uppercase italic tracking-tight">Corporate Relations</h4>
+                 <p className="text-zinc-500 text-sm font-medium italic">For partner inquiries, compliance reviews, and high-volume node operator agreements.</p>
               </div>
+              <a href="mailto:support@dgamers.com" className="bg-white/5 hover:bg-white/10 text-white font-black text-[10px] uppercase tracking-widest px-8 py-4 rounded-xl border border-white/10 transition-all italic whitespace-nowrap">
+                Email Official HQ
+              </a>
            </div>
-
-           <form name="contact" method="POST" data-netlify="true" className="space-y-6">
-              <input type="hidden" name="form-name" value="contact" />
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <label className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest px-1">Full Name</label>
-                  <input 
-                    name="name"
-                    type="text" 
-                    required
-                    placeholder="Enter your name"
-                    className="w-full bg-zinc-950 border border-white/5 rounded-2xl py-4 px-6 text-sm focus:outline-none focus:border-primary/50 transition-all"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest px-1">Email Address</label>
-                  <input 
-                    name="email"
-                    type="email" 
-                    required
-                    placeholder="name@example.com"
-                    className="w-full bg-zinc-950 border border-white/5 rounded-2xl py-4 px-6 text-sm focus:outline-none focus:border-primary/50 transition-all"
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <label className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest px-1">Message</label>
-                <textarea 
-                  name="message"
-                  required
-                  rows={4}
-                  placeholder="How can we help you?"
-                  className="w-full bg-zinc-950 border border-white/5 rounded-2xl py-4 px-6 text-sm focus:outline-none focus:border-primary/50 transition-all resize-none"
-                />
-              </div>
-              <button 
-                type="submit"
-                className="w-full bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 text-white font-bold py-5 rounded-2xl transition-all shadow-xl shadow-primary/20 flex items-center justify-center gap-3 uppercase tracking-widest text-xs"
-              >
-                Send Message
-                <div className="p-1 bg-white/20 rounded-lg">
-                  <ChevronRight className="w-4 h-4" />
-                </div>
-              </button>
-           </form>
         </div>
-      </div>
-
-      <div className="bg-zinc-900/50 border border-white/5 rounded-3xl p-8 flex flex-col md:flex-row items-center justify-between gap-6">
-         <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center">
-               <Clock className="text-zinc-500 w-6 h-6" />
-            </div>
-            <div>
-               <h4 className="text-sm font-bold uppercase tracking-tight text-white">Support Hours</h4>
-               <p className="text-xs text-zinc-500 font-medium">Monday — Sunday, 08:00 AM - 10:00 PM WAT</p>
-            </div>
-         </div>
-         <div className="text-center md:text-right">
-            <p className="text-[10px] text-zinc-600 font-bold uppercase tracking-widest mb-1">Response Time</p>
-            <p className="text-xs font-bold text-primary italic">Typically under 10 minutes</p>
-         </div>
       </div>
     </div>
   );
@@ -1532,63 +1724,114 @@ const LegalPage = () => {
 };
 
 const Leaderboard = () => (
-  <div className="space-y-8">
-     <div className="text-center max-w-2xl mx-auto mb-12">
-        <h1 className="text-4xl font-bold mb-4 font-display">Global Arena</h1>
-        <p className="text-zinc-400">Compete with gamers worldwide. Top ranks earn weekly bonuses and exclusive cyan badges.</p>
-     </div>
+  <div className="space-y-16 max-w-5xl mx-auto pb-20">
+      <div className="text-center space-y-4">
+         <div className="inline-flex items-center gap-2 px-3 py-1 bg-zinc-900 border border-white/10 rounded-full text-[10px] font-black text-zinc-500 uppercase tracking-[0.3em]">
+            <TrophyIcon className="w-3 h-3 text-primary" /> Season 04 • Active
+         </div>
+         <h1 className="text-massive font-heavy italic tracking-tighter text-white uppercase leading-[0.8]">
+            ARENA <br />
+            <span className="text-primary italic">LEGENDS.</span>
+         </h1>
+         <p className="text-zinc-500 text-lg font-medium max-w-xl mx-auto italic">
+            Compete for the top position in the Nigerian Elite Tier. 
+            Rewards are distributed every Sunday at 23:59 GMT+1.
+         </p>
+      </div>
 
-     <div className="flex flex-wrap gap-2 justify-center mb-8">
-        {['Top Earners (Weekly)', 'Most Games Played', 'Highest Payout'].map((cat, i) => (
-          <button key={cat} className={cn(
-            "px-6 py-2 rounded-full text-sm font-medium transition-all border",
-            i === 0 ? "bg-primary border-primary text-white shadow-lg shadow-primary/20" : "bg-zinc-900 border-white/5 text-zinc-400 hover:text-white"
-          )}>
-            {cat}
-          </button>
-        ))}
-     </div>
+      <div className="flex flex-wrap gap-4 justify-center">
+         {[
+           { label: 'Weekly Earnings', active: true },
+           { label: 'Monthly Growth', active: false },
+           { label: 'Lifetime Payouts', active: false }
+         ].map((cat) => (
+           <button key={cat.label} className={cn(
+             "px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all italic",
+             cat.active 
+               ? "bg-primary text-white shadow-xl shadow-primary/20 border border-white/10" 
+               : "bg-zinc-900/50 border border-white/5 text-zinc-600 hover:text-zinc-400"
+           )}>
+             {cat.label}
+           </button>
+         ))}
+      </div>
 
-     <div className="glass-card overflow-hidden">
-        <table className="w-full text-left">
-          <thead>
-            <tr className="border-b border-white/5 bg-white/5">
-              <th className="px-6 py-4 text-xs font-bold uppercase tracking-widest text-zinc-500">Rank</th>
-              <th className="px-6 py-4 text-xs font-bold uppercase tracking-widest text-zinc-500">User</th>
-              <th className="px-6 py-4 text-xs font-bold uppercase tracking-widest text-zinc-500">Earnings</th>
-              <th className="px-6 py-4 text-xs font-bold uppercase tracking-widest text-zinc-500">Games</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-white/5">
-            {[
-              { rank: 1, name: 'StormBreaker', amount: '$542.40', games: 124, color: 'text-cyan-400 shadow-cyan-400/50' },
-              { rank: 2, name: 'CryptoKing', amount: '$312.20', games: 89, color: 'text-zinc-200' },
-              { rank: 3, name: 'GamerX', amount: '$285.50', games: 102, color: 'text-zinc-200' },
-              { rank: 4, name: 'EtherFlow', amount: '$192.10', games: 67, color: 'text-zinc-400' },
-              { rank: 5, name: 'NightOwl', amount: '$150.00', games: 45, color: 'text-zinc-400' },
-            ].map((row) => (
-              <tr key={row.rank} className="hover:bg-white/[0.02] transition-colors group">
-                <td className="px-6 py-6 font-display font-bold">
-                   <div className={cn(
-                     "w-8 h-8 rounded-lg flex items-center justify-center border",
-                     row.rank === 1 ? "bg-cyan-500/10 border-cyan-500/30 text-cyan-400" : "bg-zinc-800 border-white/5"
-                   )}>
-                     {row.rank}
+      <div className="glass-card overflow-hidden border-white/5">
+         <table className="w-full text-left border-collapse">
+           <thead>
+             <tr className="bg-zinc-900/50 text-[10px] font-black uppercase tracking-[0.3em] text-zinc-600">
+               <th className="px-8 py-6">Rank</th>
+               <th className="px-8 py-6">Node Operator</th>
+               <th className="px-8 py-6">Yield</th>
+               <th className="px-8 py-6">Status</th>
+               <th className="px-8 py-6 text-right">Activity</th>
+             </tr>
+           </thead>
+           <tbody className="divide-y divide-white/5">
+             {[
+               { rank: 1, name: 'StormBreaker', country: 'Nigeria', amount: '₦542,400', games: 124, tier: 'Diamond' },
+               { rank: 2, name: 'CryptoKing', country: 'Nigeria', amount: '₦312,200', games: 89, tier: 'Platinum' },
+               { rank: 3, name: 'GamerX', country: 'Ghana', amount: '₦285,500', games: 102, tier: 'Gold' },
+               { rank: 4, name: 'EtherFlow', country: 'USA', amount: '₦192,100', games: 67, tier: 'Silver' },
+               { rank: 5, name: 'NightOwl', country: 'Canada', amount: '₦150,000', games: 45, tier: 'Silver' },
+             ].map((row) => (
+               <tr key={row.rank} className="hover:bg-white/[0.02] transition-colors group">
+                 <td className="px-8 py-8">
+                    <div className={cn(
+                      "w-10 h-10 rounded-xl flex items-center justify-center font-display font-black italic text-lg border",
+                      row.rank === 1 ? "bg-primary/20 border-primary/40 text-primary shadow-lg shadow-primary/10" : "bg-zinc-900 border-white/5 text-zinc-600"
+                    )}>
+                      {row.rank < 10 ? `0${row.rank}` : row.rank}
+                    </div>
+                 </td>
+                 <td className="px-8 py-8">
+                   <div className="flex items-center gap-4">
+                     <div className="relative">
+                       <div className="w-12 h-12 rounded-2xl bg-zinc-900 border border-white/5 group-hover:border-primary/40 transition-all flex items-center justify-center font-black text-zinc-700 uppercase italic">
+                         {row.name[0]}
+                       </div>
+                       <span className="absolute -bottom-1 -right-1 text-sm bg-zinc-950 rounded-full w-6 h-6 flex items-center justify-center border border-white/10">{getFlagEmoji(row.country)}</span>
+                     </div>
+                     <div>
+                        <span className={cn("font-bold text-base block uppercase tracking-tight italic", row.rank === 1 ? "text-primary" : "text-white")}>{row.name}</span>
+                        <span className="text-[10px] font-black text-zinc-600 uppercase tracking-widest leading-none">{row.country} • Local node</span>
+                     </div>
                    </div>
-                </td>
-                <td className="px-6 py-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-zinc-800 border border-white/5 group-hover:border-primary/50 transition-colors"></div>
-                    <span className={cn("font-bold", row.rank === 1 && "text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.5)]")}>{row.name}</span>
-                  </div>
-                </td>
-                <td className="px-6 py-4 font-mono font-bold text-zinc-200 group-hover:text-primary transition-colors">{row.amount}</td>
-                <td className="px-6 py-4 text-zinc-500 group-hover:text-zinc-300">{row.games}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-     </div>
+                 </td>
+                 <td className="px-8 py-8">
+                    <div className="text-xl font-display font-black text-white italic tracking-tighter">{row.amount}</div>
+                    <div className="text-[10px] font-black text-primary uppercase tracking-widest">Calculated Yield</div>
+                 </td>
+                 <td className="px-8 py-8">
+                    <span className="text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded bg-white/5 border border-white/10 text-zinc-400 italic">
+                      {row.tier} TIER
+                    </span>
+                 </td>
+                 <td className="px-8 py-8 text-right">
+                    <div className="text-sm font-bold text-zinc-300 italic">{row.games} Quests</div>
+                    <div className="text-[9px] font-black text-emerald-500 uppercase tracking-widest">Active Sync</div>
+                 </td>
+               </tr>
+             ))}
+           </tbody>
+         </table>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+         <div className="glass-card p-8 bg-primary/5 border-primary/20">
+            <h4 className="text-xs font-black text-primary uppercase tracking-[0.3em] mb-4">Elite Rewards</h4>
+            <p className="text-zinc-600 text-sm leading-relaxed mb-6 font-medium">
+               The top operator every week receives an exclusive <span className="text-white italic">Elite Founder Badge</span> and holds it until unseated. Diamond tier operators get instant withdrawal settlement.
+            </p>
+            <button className="btn-primary text-[10px] px-6 py-3 w-fit">View Tier Benefits</button>
+         </div>
+         <div className="glass-card p-8 border-white/5">
+            <h4 className="text-xs font-black text-zinc-400 uppercase tracking-[0.3em] mb-4">Integrity Check</h4>
+            <p className="text-zinc-600 text-sm leading-relaxed font-medium">
+               All leaderboard earnings are reviewed by our compliance team. Any node detected using unauthorized protocols (VPN/Proxy) will be permanently purged from the arena.
+            </p>
+         </div>
+      </div>
   </div>
 );
 
@@ -1599,7 +1842,9 @@ const ReferralPage = () => {
   const [refEarnings, setRefEarnings] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  const refLink = user ? `${window.location.origin}/join?ref=${user.uid}` : 'Generating link...';
+  const refLink = profile?.referralCode 
+    ? `${window.location.origin}/join?ref=${profile.referralCode}` 
+    : user ? `${window.location.origin}/join?ref=${user.uid}` : 'Generating link...';
 
   useEffect(() => {
     if (!user) return;
@@ -1607,7 +1852,7 @@ const ReferralPage = () => {
     // 1. Fetch users referred by this user
     const q = query(
       collection(db, 'users'),
-      where('referrerId', '==', user.uid)
+      where('referredBy', '==', user.uid)
     );
 
     const unsubReferrals = onSnapshot(q, (snapshot) => {
@@ -1671,13 +1916,13 @@ const ReferralPage = () => {
               {copied ? 'Copied' : 'Copy'}
             </button>
           </div>
-          {profile?.referrerId && (
+          {profile?.referredBy && (
             <div className="pt-2 flex items-center gap-2">
               <div className="w-6 h-6 rounded-lg bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20">
                 <CheckCircle2 className="w-3 h-3 text-emerald-500" />
               </div>
               <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-black italic">
-                Verified Referrer: <span className="text-white">{profile.referrerName || profile.referrerId.slice(0, 8)}</span>
+                Verified Referrer: <span className="text-white">{profile.referrerName || profile.referredBy.slice(0, 8)}</span>
               </p>
             </div>
           )}
@@ -1731,8 +1976,11 @@ const ReferralPage = () => {
                        <tr key={i} className="hover:bg-white/[0.02] transition-colors group">
                           <td className="px-6 py-4">
                              <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-full bg-zinc-800 border border-white/5 overflow-hidden">
-                                   <img src={ref.avatarUrl || `https://api.dicebear.com/7.x/pixel-art/svg?seed=${ref.username}`} alt="av" />
+                                <div className="relative">
+                                  <div className="w-8 h-8 rounded-full bg-zinc-800 border border-white/5 overflow-hidden">
+                                     <img src={ref.avatarUrl || `https://api.dicebear.com/7.x/pixel-art/svg?seed=${ref.username}`} alt="av" />
+                                  </div>
+                                  <span className="absolute -bottom-1 -right-1 text-[10px]">{getFlagEmoji(ref.country || 'Nigeria')}</span>
                                 </div>
                                 <span className="font-bold">{ref.username}</span>
                              </div>

@@ -279,12 +279,12 @@ export const AuthPage = () => {
             </div>
 
             <div className="pt-12 text-center">
-              <div className="flex items-center justify-center gap-6 text-[10px] uppercase font-bold tracking-widest text-zinc-700">
-                <Link to="/coming-soon" className="hover:text-zinc-500 transition-colors">Platform Status</Link>
-                <Link to="/coming-soon" className="hover:text-zinc-500 transition-colors">Risk Policy</Link>
-                <Link to="/coming-soon" className="hover:text-zinc-500 transition-colors">Regional Support</Link>
+              <div className="flex items-center justify-center gap-6 text-[10px] uppercase font-bold tracking-widest text-blue-500/40">
+                <Link to="/coming-soon" className="hover:text-primary transition-colors">Platform Status</Link>
+                <Link to="/coming-soon" className="hover:text-primary transition-colors">Risk Policy</Link>
+                <Link to="/coming-soon" className="hover:text-primary transition-colors">Regional Support</Link>
               </div>
-              <p className="text-[10px] text-zinc-800 mt-4 uppercase tracking-[0.3em] font-black">© 2026 DGAMERS ELITE REWARDS</p>
+              <p className="text-[10px] text-blue-500/20 mt-4 uppercase tracking-[0.3em] font-black">© 2026 DGAMERS ELITE REWARDS</p>
             </div>
           </div>
         </div>

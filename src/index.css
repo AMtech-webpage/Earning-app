@@ -7,16 +7,18 @@
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
   --font-heavy: "Outfit", sans-serif;
 
-  --color-primary: #007BFF;
-  --color-primary-glow: rgba(0, 123, 255, 0.5);
-  --color-cyan-glow: rgba(0, 212, 255, 0.5);
+  --color-primary: #2563eb;
+  --color-primary-glow: rgba(37, 99, 235, 0.4);
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444;
   --color-dark-bg: #030305;
-  --color-card-bg: #0D0D12;
+  --color-card-bg: #0d0d12;
 }
 
 @layer base {
   body {
-    @apply bg-dark-bg text-white font-sans antialiased selection:bg-primary/30;
+    @apply bg-dark-bg text-zinc-100 font-sans antialiased selection:bg-primary/30 selection:text-white;
     overflow-x: hidden;
   }
 
@@ -25,67 +27,65 @@
     position: fixed;
     inset: 0;
     background-image: 
-      linear-gradient(rgba(0, 123, 255, 0.03) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(0, 123, 255, 0.03) 1px, transparent 1px);
-    background-size: 50px 50px;
+      linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+    background-size: 64px 64px;
     background-position: center center;
     z-index: -1;
     pointer-events: none;
   }
 
-  h1, h2, h3, h4, h5, h6 {
-    @apply font-display font-medium tracking-tight;
+  h1, h2, h3, h4, h5, h6, .font-display {
+    @apply font-display font-bold tracking-tight text-white;
   }
 }
 
 @layer components {
   .glass-card {
-    @apply bg-card-bg/80 border border-white/5 rounded-2xl backdrop-blur-xl shadow-2xl;
+    @apply bg-zinc-950/40 border border-white/5 rounded-2xl backdrop-blur-2xl shadow-2xl transition-all duration-300;
+  }
+  
+  .glass-card:hover {
+    @apply border-white/10 bg-zinc-950/50;
   }
 
-  .glow-button {
-    @apply relative overflow-hidden bg-primary text-white font-bold py-3 px-6 rounded-xl transition-all border border-white/10 active:scale-95;
-    box-shadow: 0 0 15px var(--color-primary-glow);
+  .btn-primary {
+    @apply bg-primary hover:bg-blue-600 text-white font-bold uppercase tracking-widest text-[10px] py-4 px-8 rounded-xl transition-all shadow-[0_0_20px_var(--color-primary-glow)] hover:scale-[1.02] active:scale-[0.98] border border-white/10;
   }
 
-  .glow-button-3d {
-    @apply relative overflow-hidden bg-primary text-white font-black py-4 px-8 rounded-2xl transition-all border-b-4 border-blue-800 hover:border-b-2 hover:translate-y-[2px] active:border-b-0 active:translate-y-[4px] uppercase tracking-widest text-[10px] italic flex items-center justify-center gap-3;
-    box-shadow: 0 0 20px var(--color-primary-glow);
-  }
-
-  .glow-button-3d:hover {
-    box-shadow: 0 0 30px var(--color-primary-glow);
-    filter: brightness(1.1);
+  .btn-secondary {
+    @apply bg-zinc-900 hover:bg-zinc-800 text-zinc-300 font-bold uppercase tracking-widest text-[10px] py-4 px-8 rounded-xl transition-all border border-white/5 hover:border-white/10;
   }
 
   .cyber-grid {
-    background-image: linear-gradient(to right, rgba(255,255,255,0.05) 1px, transparent 1px),
-                      linear-gradient(to bottom, rgba(255,255,255,0.05) 1px, transparent 1px);
-    background-size: 20px 20px;
+    background-image: linear-gradient(to right, rgba(255,255,255,0.03) 1px, transparent 1px),
+                      linear-gradient(to bottom, rgba(255,255,255,0.03) 1px, transparent 1px);
+    background-size: 24px 24px;
   }
 
-  .neon-text {
-    text-shadow: 0 0 10px var(--color-primary-glow), 0 0 20px var(--color-primary-glow);
+  .glow-text {
+    text-shadow: 0 0 20px var(--color-primary-glow);
   }
 }
 
 .text-massive {
-  font-size: clamp(3rem, 15vw, 12rem);
+  font-size: clamp(3rem, 12vw, 10rem);
   line-height: 0.85;
-  letter-spacing: -0.04em;
+  letter-spacing: -0.05em;
+  font-weight: 900;
 }
 
 @keyframes scanline {
-  0% { transform: translateY(-100%); }
-  100% { transform: translateY(100%); }
+  0% { transform: translateY(-50%); }
+  100% { transform: translateY(50%); }
 }
 
 .scanline::after {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(to bottom, transparent, rgba(0, 123, 255, 0.05), transparent);
+  background: linear-gradient(to bottom, transparent, rgba(37, 99, 235, 0.03), transparent);
   height: 200%;
-  animation: scanline 8s linear infinite;
+  animation: scanline 10s linear infinite;
   pointer-events: none;
 }
