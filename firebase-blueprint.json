@@ -7,16 +7,37 @@
       "properties": {
         "uid": { "type": "string", "description": "Firebase Auth UID" },
         "username": { "type": "string" },
+        "displayName": { "type": "string" },
         "email": { "type": "string" },
+        "avatarUrl": { "type": "string" },
         "coins": { "type": "number", "description": "Virtual currency balance" },
         "tier": { "type": "string", "enum": ["bronze", "silver", "gold", "platinum"] },
+        "bio": { "type": "string", "description": "User profile bio" },
+        "stats": {
+          "type": "object",
+          "properties": {
+            "gamesPlayed": { "type": "number" },
+            "highestStreak": { "type": "number" },
+            "totalQuests": { "type": "number" }
+          }
+        },
         "referrerId": { "type": "string", "description": "UID of the user who referred them" },
         "createdAt": { "type": "string", "format": "date-time" },
         "lastLoginAt": { "type": "string", "format": "date-time" },
         "isVerified": { "type": "boolean" },
-        "country": { "type": "string" }
+        "country": { "type": "string" },
+        "walletAddress": { "type": "string", "description": "Connected cryptocurrency wallet address" }
       },
       "required": ["uid", "username", "coins", "tier", "createdAt"]
+    },
+    "UsernameEntry": {
+      "title": "Username Entry",
+      "description": "Used to enforce unique usernames.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" }
+      },
+      "required": ["userId"]
     },
     "Transaction": {
       "title": "Transaction",
@@ -78,6 +99,10 @@
     "/leaderboard/{entryId}": {
       "schema": "LeaderboardEntry",
       "description": "Global leaderboard entries"
+    },
+    "/usernames/{username}": {
+      "schema": "UsernameEntry",
+      "description": "Unique usernames mapping to UIDs"
     }
   }
 }

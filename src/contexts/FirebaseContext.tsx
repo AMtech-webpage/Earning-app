@@ -8,15 +8,24 @@ import {
   signInWithEmailAndPassword,
   updateProfile
 } from 'firebase/auth';
-import { doc, onSnapshot, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
+import { doc, onSnapshot, setDoc, serverTimestamp, getDoc, writeBatch, deleteDoc } from 'firebase/firestore';
 import { auth, db, googleProvider, handleFirestoreError, OperationType } from '../lib/firebase';
+import firebaseConfig from '@/firebase-applet-config.json';
 
 interface UserProfile {
   uid: string;
   username: string;
+  displayName?: string;
   email: string;
+  avatarUrl?: string;
+  bio?: string;
   coins: number;
   tier: string;
+  stats?: {
+    gamesPlayed: number;
+    highestStreak: number;
+    totalQuests: number;
+  };
   referrerId?: string;
   createdAt: any;
   lastLoginAt: any;
@@ -35,6 +44,8 @@ interface FirebaseContextType {
   signInWithEmail: (email: string, pass: string) => Promise<void>;
   logout: () => Promise<void>;
   awardCoins: (amount: number, description: string) => Promise<void>;
+  updateProfileData: (data: Partial<UserProfile>) => Promise<void>;
+  checkUsernameAvailability: (username: string) => Promise<boolean>;
   clearAuthError: () => void;
 }
 
@@ -58,66 +69,96 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      setUser(firebaseUser);
-      
-      if (firebaseUser) {
-        // Listen to profile
-        const profileRef = doc(db, 'users', firebaseUser.uid);
+      try {
+        setUser(firebaseUser);
         
-        // Check if profile exists, if not create it
-        const snap = await getDoc(profileRef);
-        if (!snap.exists()) {
-          const referrerId = localStorage.getItem('dgamers_ref');
+        if (firebaseUser) {
+          // Listen to profile
+          const profileRef = doc(db, 'users', firebaseUser.uid);
           
-          let baseUsername = firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Gamer';
-          if (baseUsername.length < 3) baseUsername = `${baseUsername}_player`;
-          if (baseUsername.length > 32) baseUsername = baseUsername.substring(0, 32);
-
-          const newProfile: any = {
-            uid: firebaseUser.uid,
-            username: baseUsername,
-            email: firebaseUser.email || '',
-            coins: 0,
-            tier: 'bronze',
-            createdAt: serverTimestamp(),
-            lastLoginAt: serverTimestamp(),
-            isVerified: firebaseUser.emailVerified || false,
-            country: 'Nigeria' 
-          };
-
-          if (referrerId && referrerId !== firebaseUser.uid) {
-            newProfile.referrerId = referrerId;
-          }
-          
+          // Check if profile exists, if not create it
+          let snap;
           try {
-            await setDoc(profileRef, newProfile);
-            // Clear used ref
-            localStorage.removeItem('dgamers_ref');
-          } catch (error) {
-            handleFirestoreError(error, OperationType.CREATE, `users/${firebaseUser.uid}`);
+            // Force server check to avoid "offline" cache issues if they exist
+            snap = await getDoc(profileRef);
+          } catch (e: any) {
+            console.error("Error fetching profile", e);
+            const isOffline = e?.message?.includes('offline') || e?.code === 'unavailable';
+            if (isOffline) {
+              setAuthError("Network issue: Unable to reach Firebase. Please check your connection.");
+            }
           }
+
+          if (snap && !snap.exists()) {
+            const referrerId = localStorage.getItem('dgamers_ref');
+            
+            let baseUsername = firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Gamer';
+            if (baseUsername.length < 3) baseUsername = `${baseUsername}_player`;
+            if (baseUsername.length > 32) baseUsername = baseUsername.substring(0, 32);
+
+            const newProfile: any = {
+              uid: firebaseUser.uid,
+              username: baseUsername,
+              displayName: firebaseUser.displayName || baseUsername,
+              email: firebaseUser.email || '',
+              avatarUrl: `https://api.dicebear.com/7.x/pixel-art/svg?seed=${baseUsername}`,
+              coins: 0,
+              tier: 'bronze',
+              stats: {
+                gamesPlayed: 0,
+                highestStreak: 0,
+                totalQuests: 0
+              },
+              createdAt: serverTimestamp(),
+              lastLoginAt: serverTimestamp(),
+              isVerified: firebaseUser.emailVerified || false,
+              country: 'Nigeria' 
+            };
+
+            if (referrerId && referrerId !== firebaseUser.uid) {
+              newProfile.referrerId = referrerId;
+            }
+            
+            try {
+              const batch = writeBatch(db);
+              batch.set(profileRef, newProfile);
+              batch.set(doc(db, 'usernames', baseUsername.toLowerCase()), { userId: firebaseUser.uid });
+              await batch.commit();
+              // Clear used ref
+              localStorage.removeItem('dgamers_ref');
+            } catch (error) {
+              console.error("Failed to create profile", error);
+              // We don't use handleFirestoreError here because it throws
+            }
+          } else if (snap && snap.exists()) {
+            // Update last login
+            try {
+              await setDoc(profileRef, { lastLoginAt: serverTimestamp() }, { merge: true });
+            } catch (error) {
+              console.warn("Failed to update last login", error);
+            }
+          }
+
+          // Start listener
+          const unsubProfile = onSnapshot(profileRef, (docSnap) => {
+            if (docSnap.exists()) {
+              setProfile(docSnap.data() as UserProfile);
+            }
+          }, (error) => {
+            console.warn("Profile listener error", error);
+          });
+
+          // Note: we can't easily return unsubProfile here because this is an async callback
+          // Instead we store it in a ref or similar if we really need cleanup, 
+          // but for a provider it's usually okay until the provider unmounts (which is never)
         } else {
-          // Update last login
-          try {
-            await setDoc(profileRef, { lastLoginAt: serverTimestamp() }, { merge: true });
-          } catch (error) {
-            handleFirestoreError(error, OperationType.UPDATE, `users/${firebaseUser.uid}`);
-          }
+          setProfile(null);
         }
-
-        const unsubProfile = onSnapshot(profileRef, (docSnap) => {
-          if (docSnap.exists()) {
-            setProfile(docSnap.data() as UserProfile);
-          }
-        }, (error) => {
-          handleFirestoreError(error, OperationType.GET, `users/${firebaseUser.uid}`);
-        });
-
-        return () => unsubProfile();
-      } else {
-        setProfile(null);
+      } catch (err) {
+        console.error("onAuthStateChanged error", err);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     });
 
     return () => unsubscribe();
@@ -135,12 +176,16 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       let message = "An unexpected error occurred during sign in.";
       if (error.code === 'auth/popup-blocked') {
         message = "Login popup was blocked by your browser. Please allow popups for this site.";
-      } else if (error.code === 'auth/cancelled-popup-request') {
+      } else if (error.code === 'auth/cancelled-popup-request' || error.code === 'auth/popup-closed-by-user') {
         message = "Sign in was cancelled.";
       } else if (error.code === 'auth/network-request-failed') {
         message = "Network error. Please check your connection.";
+      } else if (error.code === 'auth/operation-not-allowed') {
+        message = `Google Sign-In is not enabled for Project ID: ${firebaseConfig.projectId}. Please enable it in the Authentication > Sign-in method tab. (Error: ${error.code})`;
+      } else if (error.code === 'auth/unauthorized-domain') {
+        message = `Domain not authorized. Please add ${window.location.host} to "Authorized domains" in your Firebase Console for project ${firebaseConfig.projectId}. (Error: ${error.code})`;
       } else {
-        message = error.message;
+        message = `${error.message} (${error.code})`;
       }
       setAuthError(message);
     } finally {
@@ -160,6 +205,13 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       let message = error.message;
       if (error.code === 'auth/email-already-in-use') message = "This email is already registered.";
       if (error.code === 'auth/weak-password') message = "Password should be at least 6 characters.";
+      if (error.code === 'auth/operation-not-allowed') {
+        message = `Authentication provider not enabled. Please enable Google and Email/Password in your Firebase Console for Project ID: ${firebaseConfig.projectId}. (Error: ${error.code})`;
+      } else if (error.code === 'auth/unauthorized-domain') {
+        message = `This domain is not authorized. Please add this URL to "Authorized domains" in your Firebase console: ${window.location.origin}. (Error: ${error.code})`;
+      } else {
+        message = `${error.message} (${error.code})`;
+      }
       setAuthError(message);
       throw error;
     } finally {
@@ -175,8 +227,12 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     } catch (error: any) {
       console.error("Sign in failed", error);
       let message = error.message;
-      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
         message = "Invalid email or password.";
+      } else if (error.code === 'auth/operation-not-allowed') {
+        message = `Email/Password sign-in is not enabled for Project ID: ${firebaseConfig.projectId}. (Error: ${error.code})`;
+      } else {
+        message = `${error.message} (${error.code})`;
       }
       setAuthError(message);
       throw error;
@@ -200,8 +256,10 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const activityRef = doc(db, `users/${user.uid}/transactions`, crypto.randomUUID());
 
     try {
+      const batch = writeBatch(db);
+
       // 1. Record the earning transaction for the user
-      await setDoc(activityRef, {
+      batch.set(activityRef, {
         userId: user.uid,
         amount: amount / 1000,
         coins: amount,
@@ -212,13 +270,77 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       });
 
       // 2. Update user's balance
-      await setDoc(profileRef, {
+      batch.set(profileRef, {
         coins: (profile.coins || 0) + amount,
         lastLoginAt: serverTimestamp()
       }, { merge: true });
 
+      // 3. Handle Referral Commission (10%)
+      if (profile.referrerId) {
+        const referralBonus = Math.floor(amount * 0.1);
+        if (referralBonus > 0) {
+          const referrerRef = doc(db, 'users', profile.referrerId);
+          const referrerSnap = await getDoc(referrerRef);
+          
+          if (referrerSnap.exists()) {
+            const referrerActivityRef = doc(db, `users/${profile.referrerId}/transactions`, crypto.randomUUID());
+            
+            // Record commission for referrer
+            batch.set(referrerActivityRef, {
+              userId: profile.referrerId,
+              amount: referralBonus / 1000,
+              coins: referralBonus,
+              type: 'referral',
+              status: 'completed',
+              description: `Commission from ${profile.username}`,
+              fromUser: profile.username,
+              createdAt: serverTimestamp()
+            });
+
+            // Update referrer's balance
+            batch.set(referrerRef, {
+              coins: (referrerSnap.data().coins || 0) + referralBonus
+            }, { merge: true });
+          }
+        }
+      }
+
+      await batch.commit();
+
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, `users/${user.uid}/transactions`);
+    }
+  };
+
+  const checkUsernameAvailability = async (username: string) => {
+    if (username.length < 3) return false;
+    const ref = doc(db, 'usernames', username.toLowerCase());
+    const snap = await getDoc(ref);
+    return !snap.exists();
+  };
+
+  const updateProfileData = async (data: Partial<UserProfile>) => {
+    if (!user || !profile) return;
+
+    try {
+      const batch = writeBatch(db);
+      const profileRef = doc(db, 'users', user.uid);
+
+      // Handle username change
+      if (data.username && data.username !== profile.username) {
+        const available = await checkUsernameAvailability(data.username);
+        if (!available) throw new Error("Username is already taken.");
+
+        // Add new username entry
+        batch.set(doc(db, 'usernames', data.username.toLowerCase()), { userId: user.uid });
+        // Delete old username entry
+        batch.delete(doc(db, 'usernames', profile.username.toLowerCase()));
+      }
+
+      batch.set(profileRef, { ...data, lastLoginAt: serverTimestamp() }, { merge: true });
+      await batch.commit();
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `users/${user.uid}`);
     }
   };
 
@@ -234,6 +356,8 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       signInWithEmail,
       logout, 
       awardCoins, 
+      updateProfileData,
+      checkUsernameAvailability,
       clearAuthError 
     }}>
       {children}

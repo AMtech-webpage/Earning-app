@@ -1,8 +1,10 @@
 import React, { StrictMode, Suspense, Component, ErrorInfo, ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
+import { BrowserRouter } from 'react-router-dom';
 import App from './App.tsx';
 import './index.css';
 import { FirebaseProvider } from './contexts/FirebaseContext.tsx';
+import { Web3Provider } from './contexts/Web3Context.tsx';
 
 console.log('Dgamers Initializing...');
 
@@ -56,10 +58,14 @@ if (rootElement) {
   createRoot(rootElement).render(
     <StrictMode>
       <ErrorBoundary>
-        <Suspense fallback={<div className="min-h-screen bg-zinc-950 flex items-center justify-center font-bold text-zinc-800">LOADING...</div>}>
-          <FirebaseProvider>
-            <App />
-          </FirebaseProvider>
+        <Suspense fallback={<div className="min-h-screen bg-zinc-950 flex items-center justify-center font-bold text-zinc-500 uppercase tracking-widest font-mono">SYSTEM BOOTING...</div>}>
+          <Web3Provider>
+            <FirebaseProvider>
+              <BrowserRouter>
+                <App />
+              </BrowserRouter>
+            </FirebaseProvider>
+          </Web3Provider>
         </Suspense>
       </ErrorBoundary>
     </StrictMode>,

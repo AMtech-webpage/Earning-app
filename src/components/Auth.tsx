@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Mail, Lock, Chrome, ArrowRight, Asterisk, Loader2, AlertCircle, X, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -12,7 +12,16 @@ export const AuthPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [usernameInput, setUsernameInput] = useState('');
-  const [refCode, setRefCode] = useState('');
+  const [refCode, setRefCode] = useState(localStorage.getItem('dgamers_ref') || '');
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const ref = params.get('ref') || params.get('referrer');
+    if (ref) {
+      setRefCode(ref);
+      setShowBonusField(true);
+    }
+  }, []);
 
   const { 
     signIn, 
