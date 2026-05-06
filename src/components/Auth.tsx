@@ -1,12 +1,15 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Mail, Lock, Chrome, ArrowRight, Asterisk } from 'lucide-react';
+import { Mail, Lock, Chrome, ArrowRight, Asterisk, Loader2, AlertCircle, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Hero3D } from './Hero3D';
 
-export const AuthPage = ({ onLogin }: { onLogin: () => void }) => {
+import { useFirebase } from '../contexts/FirebaseContext';
+
+export const AuthPage = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [showBonusField, setShowBonusField] = useState(false);
+  const { signIn, isAuthenticating, authError, clearAuthError } = useFirebase();
 
   return (
     <div className="min-h-screen grid grid-cols-1 lg:grid-cols-2 bg-dark-bg">
@@ -17,7 +20,7 @@ export const AuthPage = ({ onLogin }: { onLogin: () => void }) => {
           <Hero3D />
         </div>
         <div className="relative z-10 text-center px-12">
-          <h2 className="text-4xl font-bold font-display mb-4">NovaRewards Elite</h2>
+          <h2 className="text-4xl font-bold font-display mb-4 italic tracking-tighter">D<span className="text-primary">GAMERS</span> ELITE</h2>
           <p className="text-zinc-500 max-w-sm mx-auto">
             Join the most professional GPT platform in the gaming industry. 
             Secure, fast, and high-paying.
@@ -35,13 +38,41 @@ export const AuthPage = ({ onLogin }: { onLogin: () => void }) => {
             <p className="text-zinc-500 mt-2">Start earning from your favorite games today.</p>
           </div>
 
+          <AnimatePresence>
+            {authError && (
+              <motion.div 
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="bg-red-500/10 border border-red-500/20 p-4 rounded-xl flex items-start gap-3 relative"
+              >
+                <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-xs font-bold text-red-500 uppercase tracking-wider mb-1">Authentication Error</p>
+                  <p className="text-sm text-zinc-400 leading-relaxed">{authError}</p>
+                </div>
+                <button 
+                  onClick={clearAuthError}
+                  className="text-zinc-500 hover:text-white transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           <div className="space-y-4">
             <button 
-              onClick={onLogin}
-              className="w-full bg-white text-black py-3 rounded-xl font-bold flex items-center justify-center gap-3 hover:bg-zinc-200 transition-all border border-transparent shadow-xl shadow-white/5"
+              onClick={signIn}
+              disabled={isAuthenticating}
+              className="w-full bg-white text-black py-3 rounded-xl font-bold flex items-center justify-center gap-3 hover:bg-zinc-200 disabled:opacity-50 disabled:cursor-not-allowed transition-all border border-transparent shadow-xl shadow-white/5"
             >
-              <Chrome className="w-5 h-5 text-red-500" />
-              Continue with Google
+              {isAuthenticating ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <Chrome className="w-5 h-5 text-red-500" />
+              )}
+              {isAuthenticating ? 'Authenticating...' : 'Continue with Google'}
             </button>
 
             <div className="relative py-4">
@@ -53,15 +84,16 @@ export const AuthPage = ({ onLogin }: { onLogin: () => void }) => {
               </div>
             </div>
 
-            <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); onLogin(); }}>
+            <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); alert("Email/Password login is not enabled yet. Please use the Google sign-in method above for instant access."); }}>
               <div className="space-y-2">
                 <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider px-1">Email Address</label>
                 <div className="relative">
                   <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
                   <input 
                     type="email" 
+                    disabled={isAuthenticating}
                     placeholder="name@example.com"
-                    className="w-full bg-zinc-900 border border-white/5 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:border-primary transition-all text-sm"
+                    className="w-full bg-zinc-900 border border-white/5 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:border-primary transition-all text-sm disabled:opacity-50"
                   />
                 </div>
               </div>
@@ -72,8 +104,9 @@ export const AuthPage = ({ onLogin }: { onLogin: () => void }) => {
                   <Asterisk className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
                   <input 
                     type="password" 
+                    disabled={isAuthenticating}
                     placeholder="••••••••"
-                    className="w-full bg-zinc-900 border border-white/5 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:border-primary transition-all text-sm"
+                    className="w-full bg-zinc-900 border border-white/5 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:border-primary transition-all text-sm disabled:opacity-50"
                   />
                 </div>
               </div>
@@ -82,8 +115,9 @@ export const AuthPage = ({ onLogin }: { onLogin: () => void }) => {
                 <div className="pt-2">
                    <button 
                     type="button"
+                    disabled={isAuthenticating}
                     onClick={() => setShowBonusField(!showBonusField)}
-                    className="text-xs text-primary font-bold hover:underline"
+                    className="text-xs text-primary font-bold hover:underline disabled:opacity-50"
                    >
                      {showBonusField ? '- Hide Bonus Code' : '+ Have a referral/bonus code?'}
                    </button>
@@ -97,8 +131,9 @@ export const AuthPage = ({ onLogin }: { onLogin: () => void }) => {
                       >
                         <input 
                           type="text" 
+                          disabled={isAuthenticating}
                           placeholder="ENTER_CODE"
-                          className="w-full bg-primary/5 border border-primary/20 rounded-xl py-2 px-4 text-sm focus:outline-none focus:border-primary uppercase font-mono tracking-widest"
+                          className="w-full bg-primary/5 border border-primary/20 rounded-xl py-2 px-4 text-sm focus:outline-none focus:border-primary uppercase font-mono tracking-widest disabled:opacity-50"
                         />
                       </motion.div>
                     )}
@@ -108,7 +143,8 @@ export const AuthPage = ({ onLogin }: { onLogin: () => void }) => {
 
               <button 
                 type="submit"
-                className="w-full bg-primary py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 text-white"
+                disabled={isAuthenticating}
+                className="w-full bg-primary py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-primary/90 disabled:opacity-50 transition-all shadow-lg shadow-primary/20 text-white"
               >
                 {isLogin ? 'Login' : 'Create Account'}
                 <ArrowRight className="w-4 h-4" />
@@ -117,8 +153,9 @@ export const AuthPage = ({ onLogin }: { onLogin: () => void }) => {
 
             <div className="text-center pt-4">
                <button 
+                disabled={isAuthenticating}
                 onClick={() => setIsLogin(!isLogin)}
-                className="text-sm text-zinc-500 hover:text-white transition-colors"
+                className="text-sm text-zinc-500 hover:text-white transition-colors disabled:opacity-50"
                >
                  {isLogin ? "Don't have an account? " : "Already have an account? "}
                  <span className="text-primary font-bold">{isLogin ? 'Sign Up' : 'Login'}</span>
@@ -132,7 +169,7 @@ export const AuthPage = ({ onLogin }: { onLogin: () => void }) => {
               <Link to="/legal" className="hover:text-zinc-400">Privacy Policy</Link>
               <Link to="/legal" className="hover:text-zinc-400">Help Center</Link>
             </div>
-            <p className="text-[10px] text-zinc-700 mt-4 uppercase tracking-[0.2em]">© 2026 NovaRewards International</p>
+            <p className="text-[10px] text-zinc-700 mt-4 uppercase tracking-[0.2em]">© 2026 Dgamers International</p>
           </div>
         </div>
       </div>

@@ -2,8 +2,9 @@ import React, { StrictMode, Suspense, Component, ErrorInfo, ReactNode } from 're
 import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
+import { FirebaseProvider } from './contexts/FirebaseContext.tsx';
 
-console.log('NovaRewards Initializing...');
+console.log('Dgamers Initializing...');
 
 interface Props {
   children: ReactNode;
@@ -56,7 +57,9 @@ if (rootElement) {
     <StrictMode>
       <ErrorBoundary>
         <Suspense fallback={<div className="min-h-screen bg-zinc-950 flex items-center justify-center font-bold text-zinc-800">LOADING...</div>}>
-          <App />
+          <FirebaseProvider>
+            <App />
+          </FirebaseProvider>
         </Suspense>
       </ErrorBoundary>
     </StrictMode>,

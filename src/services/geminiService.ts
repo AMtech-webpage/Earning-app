@@ -4,7 +4,7 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
 
 export async function generateArticles() {
   const prompt = `
-    Generate 3 professional blog article summaries for a gaming rewards platform called "NovaRewards".
+    Generate 3 professional blog article summaries for a gaming rewards platform called "Dgamers".
     Each article should build trust and authority.
     
     Format as a JSON array of objects:
@@ -40,5 +40,36 @@ export async function generateArticles() {
   } catch (error) {
     console.error("Gemini Error:", error);
     return null;
+  }
+}
+
+export async function reviewAccountSecurity(userMetadata: any) {
+  const prompt = `
+    Review the following user session data for security risks on Dgamers (Gaming Platform).
+    Focus on VPN detection, multi-accounting, and unusual login patterns.
+    User is expected to be in Nigeria.
+    
+    Data: ${JSON.stringify(userMetadata)}
+    
+    Return a JSON object:
+    {
+      "riskScore": (0-100),
+      "decision": "clear" | "flagged" | "banned",
+      "reason": "Explain briefly",
+      "isVpnSuspected": boolean
+    }
+  `;
+
+  try {
+    const result = await ai.models.generateContent({
+      model: "gemini-2.0-flash",
+      contents: [{ role: "user", parts: [{ text: prompt }] }]
+    });
+    
+    const text = result.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    const jsonMatch = text.match(/\{.*\}/s);
+    return jsonMatch ? JSON.parse(jsonMatch[0]) : { riskScore: 0, decision: "clear" };
+  } catch (error) {
+    return { riskScore: 0, decision: "clear", error: "Review failed" };
   }
 }

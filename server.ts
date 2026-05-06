@@ -15,14 +15,29 @@ async function startServer() {
 
   // API Routes
   app.get("/api/health", (req, res) => {
-    res.json({ status: "ok", message: "NovaRewards API is live" });
+    res.json({ status: "ok", message: "Dgamers API is live" });
   });
 
-  // Example Postback Route (for scaling to real partners)
-  app.post("/api/postback/:partner", (req, res) => {
-    console.log(`Received postback from ${req.params.partner}:`, req.body);
-    // Logic to verify and add coins to user
-    res.status(200).send("OK");
+  // Security & Geofencing Endpoint
+  app.get("/api/verify-access", (req, res) => {
+    const cfCountry = req.headers['cf-ipcountry'] || req.headers['x-vercel-ip-country'];
+    const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    
+    // In dev, we might not have country headers. For production/preview, this is critical.
+    const isNigeria = cfCountry === 'NG' || !cfCountry; // Allow null for dev preview convenience
+    
+    res.json({
+      isNigeria: isNigeria,
+      clientIp: clientIp,
+      location: cfCountry || "Unknown",
+      vpnProbability: 0.05 // Placeholder for Gemini analysis
+    });
+  });
+
+  // Account Review (AI Powered)
+  app.post("/api/review-account", async (req, res) => {
+    // Logic to send user stats/IP to Gemini for a fraud review
+    res.json({ status: "cleared", reviewDate: new Date() });
   });
 
   // Vite middleware for development

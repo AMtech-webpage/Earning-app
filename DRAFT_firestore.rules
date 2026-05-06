@@ -1,0 +1,133 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helpers ---
+    
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // --- Entity Validations ---
+
+    function isValidUser(data) {
+      return data.uid == request.auth.uid 
+        && data.username is string && data.username.size() >= 3 && data.username.size() <= 32
+        && data.email is string && data.email.size() <= 100
+        && data.coins is number && data.coins >= 0
+        && data.tier in ['bronze', 'silver', 'gold', 'platinum']
+        && data.createdAt is timestamp;
+    }
+
+    function isValidTransaction(data) {
+      return data.userId == request.auth.uid
+        && data.amount is number
+        && data.coins is number
+        && data.type in ['earn', 'withdraw', 'bonus']
+        && data.status in ['pending', 'completed', 'failed']
+        && (data.description is string ? data.description.size() <= 200 : true)
+        && data.createdAt is timestamp;
+    }
+
+    function isValidNotification(data) {
+      return data.userId is string
+        && data.title is string && data.title.size() <= 100
+        && data.message is string && data.message.size() <= 500
+        && data.read is bool
+        && data.createdAt is timestamp;
+    }
+
+    // --- Rules ---
+
+    // 1. Users Collection
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow list: if false; // No blanket profile listing
+      
+      allow create: if isOwner(userId) 
+        && isValidUser(incoming())
+        && incoming().createdAt == request.time
+        && incoming().tier == 'bronze' // Force initial tier
+        && incoming().coins == 0; // Force initial balance
+
+      allow update: if isOwner(userId)
+        && isValidUser(incoming())
+        && (
+          // Action: Profile Edit
+          (incoming().diff(existing()).affectedKeys().hasOnly(['username', 'lastLoginAt', 'isVerified', 'country'])) ||
+          // Action: Balance Update (In a real app, this should be system-only or existsAfter verified transaction)
+          (incoming().diff(existing()).affectedKeys().hasOnly(['coins', 'lastLoginAt']))
+        )
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt;
+    }
+
+    // 2. User Transactions Sub-collection
+    match /users/{userId}/transactions/{transactionId} {
+      allow read: if isOwner(userId);
+      allow list: if isOwner(userId);
+      
+      allow create: if isOwner(userId)
+        && isValidTransaction(incoming())
+        && incoming().createdAt == request.time
+        && incoming().status == 'pending'; // New transactions must be pending
+
+      allow update: if isOwner(userId)
+        && isValidTransaction(incoming())
+        && (
+          // Action: Cancel (if still pending)
+          (existing().status == 'pending' && incoming().status == 'failed' && incoming().diff(existing()).affectedKeys().hasOnly(['status']))
+        )
+        && incoming().userId == existing().userId
+        && incoming().createdAt == existing().createdAt;
+      
+      allow delete: if false; // Transactions are immutable
+    }
+
+    // 3. Notifications Sub-collection
+    match /users/{userId}/notifications/{notificationId} {
+      allow read, list: if isOwner(userId);
+      allow create: if false; // System only (for demo, we simulate this)
+      allow update: if isOwner(userId) 
+        && incoming().diff(existing()).affectedKeys().hasOnly(['read'])
+        && incoming().userId == userId;
+      allow delete: if isOwner(userId);
+    }
+
+    // 4. Global Leaderboard
+    match /leaderboard/{entryId} {
+      allow read, list: if isSignedIn();
+      allow write: if false; // Background sync only
+    }
+
+    // 5. Test connection
+    match /test/connection {
+      allow get: if isSignedIn();
+    }
+  }
+}

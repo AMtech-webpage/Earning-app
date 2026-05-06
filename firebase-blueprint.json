@@ -2,95 +2,82 @@
   "entities": {
     "User": {
       "title": "User Profile",
-      "description": "User account data, balance, and stats.",
+      "description": "Stores user account information, balances, and preferences.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID" },
+        "username": { "type": "string" },
+        "email": { "type": "string" },
+        "coins": { "type": "number", "description": "Virtual currency balance" },
+        "tier": { "type": "string", "enum": ["bronze", "silver", "gold", "platinum"] },
+        "referrerId": { "type": "string", "description": "UID of the user who referred them" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "lastLoginAt": { "type": "string", "format": "date-time" },
+        "isVerified": { "type": "boolean" },
+        "country": { "type": "string" }
+      },
+      "required": ["uid", "username", "coins", "tier", "createdAt"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "Records earnings and withdrawals.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "amount": { "type": "number" },
+        "type": { "type": "string", "enum": ["earn", "withdraw", "bonus"] },
+        "method": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "completed", "failed"] },
+        "coins": { "type": "number" },
+        "description": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "amount", "type", "status", "coins", "createdAt"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "User notifications.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "type": { "type": "string" },
+        "read": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "title", "message", "read", "createdAt"]
+    },
+    "LeaderboardEntry": {
+      "title": "Leaderboard Entry",
+      "description": "Flattened user data for global ranking.",
       "type": "object",
       "properties": {
         "uid": { "type": "string" },
-        "displayName": { "type": "string" },
-        "photoURL": { "type": "string" },
-        "coins": { "type": "number", "description": "Platform currency" },
-        "usdBalance": { "type": "number", "description": "USD equivalent" },
-        "isVerified": { "type": "boolean" },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "lifetimeEarnings": { "type": "number" },
-        "gamesPlayed": { "type": "integer" }
+        "username": { "type": "string" },
+        "totalEarnings": { "type": "number" },
+        "coins": { "type": "number" },
+        "updatedAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["uid", "coins", "usdBalance"]
-    },
-    "Completion": {
-      "title": "Task Completion",
-      "description": "Log of a user completing an offer or game.",
-      "type": "object",
-      "properties": {
-        "userId": { "type": "string" },
-        "partnerId": { "type": "string" },
-        "taskId": { "type": "string" },
-        "amount": { "type": "number" },
-        "timestamp": { "type": "string", "format": "date-time" },
-        "status": { "type": "string", "enum": ["pending", "completed", "rejected"] }
-      },
-      "required": ["userId", "partnerId", "amount", "timestamp"]
-    },
-    "Withdrawal": {
-      "title": "Cash Out Request",
-      "description": "User withdrawal request.",
-      "type": "object",
-      "properties": {
-        "userId": { "type": "string" },
-        "amount": { "type": "number" },
-        "method": { "type": "string", "enum": ["BITCOIN", "BITCOIN_CASH", "BANK_TRANSFER"] },
-        "address": { "type": "string" },
-        "status": { "type": "string", "enum": ["pending", "processed", "rejected"] },
-        "createdAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["userId", "amount", "method", "status", "createdAt"]
-    },
-    "Leaderboard": {
-      "title": "Leaderboard Slot",
-      "description": "Ranking data for a specific period/category.",
-      "type": "object",
-      "properties": {
-        "userId": { "type": "string" },
-        "displayName": { "type": "string" },
-        "photoURL": { "type": "string" },
-        "value": { "type": "number" },
-        "rank": { "type": "integer" },
-        "category": { "type": "string", "enum": ["weekly_earners", "most_played", "highest_payout"] }
-      }
-    },
-    "Article": {
-      "title": "Blog Article",
-      "description": "Educational or promotional content.",
-      "type": "object",
-      "properties": {
-        "title": { "type": "string" },
-        "content": { "type": "string" },
-        "imageUrl": { "type": "string" },
-        "author": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" }
-      }
+      "required": ["uid", "username", "totalEarnings", "updatedAt"]
     }
   },
   "firestore": {
     "/users/{userId}": {
       "schema": "User",
-      "description": "User profiles"
+      "description": "User profiles indexed by UID"
     },
-    "/completions/{completionId}": {
-      "schema": "Completion",
-      "description": "Task history"
+    "/users/{userId}/transactions/{transactionId}": {
+      "schema": "Transaction",
+      "description": "Transactions belonging to a user"
     },
-    "/withdrawals/{withdrawalId}": {
-      "schema": "Withdrawal",
-      "description": "Payment requests"
+    "/users/{userId}/notifications/{notificationId}": {
+      "schema": "Notification",
+      "description": "User specific notifications"
     },
-    "/leaderboards/{category}/entries/{userId}": {
-      "schema": "Leaderboard",
-      "description": "Real-time leaderboard ranking"
-    },
-    "/articles/{articleId}": {
-      "schema": "Article",
-      "description": "Blog posts"
+    "/leaderboard/{entryId}": {
+      "schema": "LeaderboardEntry",
+      "description": "Global leaderboard entries"
     }
   }
 }
