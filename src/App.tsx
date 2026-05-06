@@ -30,7 +30,8 @@ import {
   Tag,
   Headphones,
   MessageSquare,
-  Send
+  Send,
+  Mail
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -148,6 +149,85 @@ const Sidebar = ({ mobileOpen, setMobileOpen }: { mobileOpen?: boolean, setMobil
         )}
       </AnimatePresence>
     </>
+  );
+};
+
+const Footer = () => {
+  return (
+    <footer className="border-t border-white/5 bg-dark-bg/50 backdrop-blur-3xl pt-16 pb-8 px-6 md:px-12 relative overflow-hidden">
+      <Hero3D particlesOnly />
+      <div className="max-w-7xl mx-auto relative z-10">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
+          <div className="space-y-6">
+            <Link to="/" className="flex items-center gap-2 group">
+              <div className="w-10 h-10 bg-zinc-900 border border-white/10 rounded-xl flex items-center justify-center group-hover:border-primary/50 transition-all">
+                <Gamepad2 className="text-primary w-6 h-6" />
+              </div>
+              <span className="font-display font-bold text-3xl tracking-tighter italic">D<span className="text-primary">GAMERS</span></span>
+            </Link>
+            <p className="text-zinc-500 text-sm leading-relaxed max-w-xs font-medium">
+              The premier reward destination for elite Nigerian gamers. Earn real value for your time and skills.
+            </p>
+            <div className="flex items-center gap-4">
+               {[MessageSquare, Send, Zap].map((Icon, i) => (
+                 <a key={i} href="#" className="w-8 h-8 bg-white/5 rounded-lg flex items-center justify-center text-zinc-500 hover:text-white hover:bg-primary/20 transition-all border border-white/5">
+                    <Icon className="w-4 h-4" />
+                 </a>
+               ))}
+            </div>
+          </div>
+
+          <div>
+            <h4 className="text-xs font-black uppercase tracking-[0.2em] text-white mb-6">Platform</h4>
+            <ul className="space-y-4">
+              {['Earn Coins', 'Leaderboard', 'Withdraw', 'Referrals'].map((item) => (
+                <li key={item}>
+                  <Link to={`/${item.toLowerCase().replace(' ', '')}`} className="text-zinc-500 hover:text-primary transition-colors text-sm font-bold uppercase tracking-tight italic">
+                    {item}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div>
+            <h4 className="text-xs font-black uppercase tracking-[0.2em] text-white mb-6">Support</h4>
+            <ul className="space-y-4">
+              {['Guides', 'Support', 'Legal & FAQ', 'Bonus Codes'].map((item) => (
+                <li key={item}>
+                  <Link to={`/${item.toLowerCase().replace(' & ', '').replace(' ', '')}`} className="text-zinc-500 hover:text-primary transition-colors text-sm font-bold uppercase tracking-tight italic">
+                    {item}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="space-y-6">
+            <h4 className="text-xs font-black uppercase tracking-[0.2em] text-white mb-6">Regional Check</h4>
+             <div className="bg-emerald-500/5 border border-emerald-500/20 p-4 rounded-2xl">
+                <div className="flex items-center gap-2 mb-2">
+                   <ShieldCheck className="w-4 h-4 text-emerald-500" />
+                   <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Nigeria Live</span>
+                </div>
+                <p className="text-[10px] text-zinc-500 leading-relaxed font-medium">
+                  We are currently fully operational in Nigeria. 
+                  All bank transfers and mobile money withdrawals are active.
+                </p>
+             </div>
+          </div>
+        </div>
+
+        <div className="pt-8 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-4">
+           <p className="text-[10px] text-zinc-700 font-black uppercase tracking-[0.4em]">© 2026 DGAMERS ELITE PLATFORM</p>
+           <div className="flex items-center gap-8 text-[10px] uppercase font-black tracking-widest text-zinc-700">
+              <Link to="/legal" className="hover:text-primary transition-colors">Privacy</Link>
+              <Link to="/legal" className="hover:text-primary transition-colors">Terms</Link>
+              <Link to="/legal" className="hover:text-primary transition-colors">Cookies</Link>
+           </div>
+        </div>
+      </div>
+    </footer>
   );
 };
 
@@ -292,6 +372,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
              </motion.div>
           </AnimatePresence>
         </main>
+        <Footer />
       </div>
     </div>
   );
@@ -1208,6 +1289,65 @@ const SupportPage = () => {
         </motion.div>
       </div>
 
+      <div className="max-w-4xl mx-auto">
+        <div className="glass-card p-10 border-white/5 bg-zinc-900/50">
+           <div className="flex items-center gap-3 mb-8">
+              <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center">
+                 <Mail className="text-primary w-6 h-6" />
+              </div>
+              <div>
+                 <h2 className="text-2xl font-bold font-display italic leading-none">DIRECT MESSAGE</h2>
+                 <p className="text-zinc-500 text-xs mt-1 uppercase tracking-widest font-bold">Powered by Netlify Forms</p>
+              </div>
+           </div>
+
+           <form name="contact" method="POST" data-netlify="true" className="space-y-6">
+              <input type="hidden" name="form-name" value="contact" />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest px-1">Full Name</label>
+                  <input 
+                    name="name"
+                    type="text" 
+                    required
+                    placeholder="Enter your name"
+                    className="w-full bg-zinc-950 border border-white/5 rounded-2xl py-4 px-6 text-sm focus:outline-none focus:border-primary/50 transition-all"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest px-1">Email Address</label>
+                  <input 
+                    name="email"
+                    type="email" 
+                    required
+                    placeholder="name@example.com"
+                    className="w-full bg-zinc-950 border border-white/5 rounded-2xl py-4 px-6 text-sm focus:outline-none focus:border-primary/50 transition-all"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest px-1">Message</label>
+                <textarea 
+                  name="message"
+                  required
+                  rows={4}
+                  placeholder="How can we help you?"
+                  className="w-full bg-zinc-950 border border-white/5 rounded-2xl py-4 px-6 text-sm focus:outline-none focus:border-primary/50 transition-all resize-none"
+                />
+              </div>
+              <button 
+                type="submit"
+                className="w-full bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 text-white font-bold py-5 rounded-2xl transition-all shadow-xl shadow-primary/20 flex items-center justify-center gap-3 uppercase tracking-widest text-xs"
+              >
+                Send Message
+                <div className="p-1 bg-white/20 rounded-lg">
+                  <ChevronRight className="w-4 h-4" />
+                </div>
+              </button>
+           </form>
+        </div>
+      </div>
+
       <div className="bg-zinc-900/50 border border-white/5 rounded-3xl p-8 flex flex-col md:flex-row items-center justify-between gap-6">
          <div className="flex items-center gap-4">
             <div className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center">
@@ -1295,25 +1435,42 @@ const LegalPage = () => {
 
             {activeTab === 'terms' && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
-                <p>By using Dgamers, you agree to the following terms and conditions. These terms ensure a fair and safe experience for all elite gamers on our platform.</p>
-                <h3 className="text-white font-bold text-xl">1. Eligibility</h3>
-                <p>You must be at least 13 years of age to use Dgamers. Our platform is currently optimized for users residing in Nigeria. Accessing the platform from other regions or using a VPN is strictly prohibited and will result in an immediate account ban.</p>
-                <h3 className="text-white font-bold text-xl">2. Account Security</h3>
-                <p>You are responsible for maintaining the confidentiality of your account information. Any activity that occurs under your account is your responsibility. Multi-accounting (creating more than one account for same user) is a violation of our terms.</p>
-                <h3 className="text-white font-bold text-xl">3. Reward Revocation</h3>
-                <p>Dgamers reserves the right to revoke coins or earnings if we detect fraudulent activity, completion of offers through unauthorized means, or exploit of platform mechanics.</p>
+                <p>Welcome to Dgamers. By accessing or using our platform, you agree to be bound by these Terms of Service. Please read them carefully.</p>
+                
+                <h3 className="text-white font-bold text-xl">1. Eligibility & Verification</h3>
+                <p>Users must be at least 13 years of age. Dgamers is currently optimized and restricted for users residing in Nigeria. Use of VPNs, proxies, or any tool that masks your true location is strictly prohibited. Violation of this regional restriction will result in permanent account termination and forfeiture of all accumulated coins.</p>
+                
+                <h3 className="text-white font-bold text-xl">2. Account Responsibility</h3>
+                <p>You are responsible for all activity under your account. Creating multiple accounts (multi-accounting) to exploit the reward system is a breach of these terms. You must provide accurate information during registration and profile updates.</p>
+                
+                <h3 className="text-white font-bold text-xl">3. Offerwall & Reward Fulfillment</h3>
+                <p>Earnings are generated through third-party partners (Offerwalls). Dgamers does not guarantee completion or payout of any specific offer. Payouts are only granted once the third-party partner successfully verifies the task completion. We reserve the right to reclaim coins if a partner issues a chargeback due to fraudulent activity or invalid task completion.</p>
+                
+                <h3 className="text-white font-bold text-xl">4. Termination</h3>
+                <p>We reserve the right to suspend or terminate accounts that violate these terms, engage in suspicious activity, or disrupt the platform's integrity for other elite gamers.</p>
               </motion.div>
             )}
 
             {activeTab === 'privacy' && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
-                <p>Your privacy is paramount. We only collect the data necessary to provide you with a world-class reward experience.</p>
-                <h3 className="text-white font-bold text-xl">1. Data Collection</h3>
-                <p>We collect basic profile information (email, username), device identifiers (to prevent fraud), and IP address data for regional verification purposes.</p>
-                <h3 className="text-white font-bold text-xl">2. Third-Party Partners</h3>
-                <p>When you use offerwalls (Lootably, RevU, etc.), they may collect data as part of their fulfillment process. Please review their independent privacy policies for details.</p>
-                <h3 className="text-white font-bold text-xl">3. No Selling of Data</h3>
-                <p>Dgamers never sells your personal information to third-party advertisers. Your data is used exclusively for reward tracking and security verification.</p>
+                <p>Dgamers is committed to protecting your privacy while ensuring a secure reward ecosystem. This policy explains how we handle your data.</p>
+                
+                <h3 className="text-white font-bold text-xl">1. Data We Collect</h3>
+                <p>We collect essential information to track your rewards and prevent fraud, including:</p>
+                <ul className="list-disc pl-5 space-y-2">
+                  <li>Account Data: Email address, username, and public profile details.</li>
+                  <li>Device Data: IP address, device type, and unique identifiers (UIDs) to verify regional eligibility and prevent multi-accounting.</li>
+                  <li>Activity Data: History of completed offers, survey attempts, and withdrawals.</li>
+                </ul>
+                
+                <h3 className="text-white font-bold text-xl">2. Usage of External Identifiers</h3>
+                <p>To facilitate reward tracking, we share a unique, non-reversible hashed User ID with our offerwall partners (like Torox, Lootably). This ID allows partners to signal our platform when you have successfully completed a task without sharing your personal email or real name.</p>
+                
+                <h3 className="text-white font-bold text-xl">3. Data Security</h3>
+                <p>Your data is stored securely using Firebase (Google Cloud Infrastructure). We employ strict security rules to ensure only you can access your private earnings and profile data.</p>
+                
+                <h3 className="text-white font-bold text-xl">4. No Data Selling</h3>
+                <p>Dgamers does not sell, rent, or trade your personal information to third-party marketing companies. Your data is used strictly for the functionality and security of the Dgamers platform.</p>
               </motion.div>
             )}
 
@@ -1571,6 +1728,31 @@ const ReferralPage = () => {
   );
 };
 
+const PublicPageWrapper = ({ children }: { children: React.ReactNode }) => (
+  <div className="bg-dark-bg min-h-screen flex flex-col">
+    <div className="fixed inset-0 z-0">
+      <Hero3D particlesOnly />
+    </div>
+    <header className="h-20 border-b border-white/5 flex items-center justify-between px-6 md:px-12 sticky top-0 bg-dark-bg/80 backdrop-blur-xl z-50">
+      <Link to="/" className="flex items-center gap-2 group">
+        <div className="w-10 h-10 bg-zinc-900 border border-white/10 rounded-xl flex items-center justify-center group-hover:border-primary/50 transition-all">
+          <Gamepad2 className="text-primary w-6 h-6" />
+        </div>
+        <span className="font-display font-bold text-3xl tracking-tighter italic text-white uppercase">D<span className="text-primary">GAMERS</span></span>
+      </Link>
+      <Link to="/" className="bg-primary hover:bg-primary/90 text-white px-8 py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition-all">
+        Login / Sign Up
+      </Link>
+    </header>
+    <main className="flex-1 relative z-10 p-6 md:p-12">
+      {children}
+    </main>
+    <div className="relative z-10">
+      <Footer />
+    </div>
+  </div>
+);
+
 function App() {
   const { user, loading: firebaseLoadingRaw } = useFirebase();
   const [accessDenied, setAccessDenied] = useState(false);
@@ -1683,27 +1865,31 @@ function App() {
   }
 
   return (
-    <>
-      {!user ? (
-        <AuthPage />
-      ) : (
-        <Layout>
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/profile" element={<ProfilePage />} />
-            <Route path="/leaderboard" element={<Leaderboard />} />
-            <Route path="/earn" element={<EarnPage />} />
-            <Route path="/transactions" element={<TransactionsPage />} />
-            <Route path="/referrals" element={<ReferralPage />} />
-            <Route path="/withdraw" element={<WithdrawPage />} />
-            <Route path="/bonus" element={<BonusPage />} />
-            <Route path="/articles" element={<ArticlesPage />} />
-            <Route path="/support" element={<SupportPage />} />
-            <Route path="/legal" element={<LegalPage />} />
-          </Routes>
-        </Layout>
-      )}
-    </>
+    <Routes>
+      <Route path="/legal" element={<PublicPageWrapper><LegalPage /></PublicPageWrapper>} />
+      <Route path="/support" element={<PublicPageWrapper><SupportPage /></PublicPageWrapper>} />
+      <Route path="*" element={
+        !user ? (
+          <AuthPage />
+        ) : (
+          <Layout>
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/profile" element={<ProfilePage />} />
+              <Route path="/leaderboard" element={<Leaderboard />} />
+              <Route path="/earn" element={<EarnPage />} />
+              <Route path="/transactions" element={<TransactionsPage />} />
+              <Route path="/referrals" element={<ReferralPage />} />
+              <Route path="/withdraw" element={<WithdrawPage />} />
+              <Route path="/bonus" element={<BonusPage />} />
+              <Route path="/articles" element={<ArticlesPage />} />
+              <Route path="/support" element={<SupportPage />} />
+              <Route path="/legal" element={<LegalPage />} />
+            </Routes>
+          </Layout>
+        )
+      } />
+    </Routes>
   );
 }
 
