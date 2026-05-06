@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Mail, Lock, Chrome, ArrowRight, Asterisk, Loader2, AlertCircle, X } from 'lucide-react';
+import { Mail, Lock, Chrome, ArrowRight, Asterisk, Loader2, AlertCircle, X, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Hero3D } from './Hero3D';
 
@@ -9,7 +9,37 @@ import { useFirebase } from '../contexts/FirebaseContext';
 export const AuthPage = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [showBonusField, setShowBonusField] = useState(false);
-  const { signIn, isAuthenticating, authError, clearAuthError } = useFirebase();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [usernameInput, setUsernameInput] = useState('');
+  const [refCode, setRefCode] = useState('');
+
+  const { 
+    signIn, 
+    signUpWithEmail, 
+    signInWithEmail, 
+    isAuthenticating, 
+    authError, 
+    clearAuthError 
+  } = useFirebase();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isLogin) {
+      try {
+        await signInWithEmail(email, password);
+      } catch (err) {
+        // Error handled in context
+      }
+    } else {
+      try {
+        if (refCode) localStorage.setItem('dgamers_ref', refCode);
+        await signUpWithEmail(email, password, usernameInput);
+      } catch (err) {
+        // Error handled in context
+      }
+    }
+  };
 
   return (
     <div className="min-h-screen grid grid-cols-1 lg:grid-cols-2 bg-dark-bg">
@@ -34,7 +64,7 @@ export const AuthPage = () => {
         
         <div className="w-full max-w-md space-y-8 relative z-10">
           <div className="text-center md:text-left">
-            <h1 className="text-3xl font-bold font-display">{isLogin ? 'Welcome Back' : 'Create Account'}</h1>
+            <h1 className="text-3xl font-bold font-display italic tracking-tight">{isLogin ? 'WELCOME BACK' : 'CREATE ACCOUNT'}</h1>
             <p className="text-zinc-500 mt-2">Start earning from your favorite games today.</p>
           </div>
 
@@ -65,10 +95,10 @@ export const AuthPage = () => {
             <button 
               onClick={signIn}
               disabled={isAuthenticating}
-              className="w-full bg-white text-black py-3 rounded-xl font-bold flex items-center justify-center gap-3 hover:bg-zinc-200 disabled:opacity-50 disabled:cursor-not-allowed transition-all border border-transparent shadow-xl shadow-white/5"
+              className="w-full bg-white text-black py-4 rounded-xl font-bold flex items-center justify-center gap-3 hover:bg-zinc-200 disabled:opacity-50 disabled:cursor-not-allowed transition-all border border-transparent shadow-xl shadow-white/5 active:scale-95"
             >
               {isAuthenticating ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
+                <Loader2 className="w-5 h-5 animate-spin text-zinc-400" />
               ) : (
                 <Chrome className="w-5 h-5 text-red-500" />
               )}
@@ -79,21 +109,42 @@ export const AuthPage = () => {
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-white/10"></div>
               </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-dark-bg px-4 text-zinc-500 tracking-widest font-bold">Or with email</span>
+              <div className="relative flex justify-center text-[10px] uppercase">
+                <span className="bg-dark-bg px-4 text-zinc-500 tracking-[0.3em] font-black">Or with email</span>
               </div>
             </div>
 
-            <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); alert("Email/Password login is not enabled yet. Please use the Google sign-in method above for instant access."); }}>
+            <form className="space-y-4" onSubmit={handleSubmit}>
+              {!isLogin && (
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider px-1">Display Username</label>
+                  <div className="relative">
+                    <Users className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                    <input 
+                      type="text" 
+                      required
+                      value={usernameInput}
+                      onChange={(e) => setUsernameInput(e.target.value)}
+                      disabled={isAuthenticating}
+                      placeholder="Gamer1337"
+                      className="w-full bg-zinc-900 border border-white/5 rounded-xl py-3.5 pl-12 pr-4 focus:outline-none focus:border-primary transition-all text-sm disabled:opacity-50 placeholder:text-zinc-700"
+                    />
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-2">
                 <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider px-1">Email Address</label>
                 <div className="relative">
                   <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
                   <input 
                     type="email" 
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                     disabled={isAuthenticating}
                     placeholder="name@example.com"
-                    className="w-full bg-zinc-900 border border-white/5 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:border-primary transition-all text-sm disabled:opacity-50"
+                    className="w-full bg-zinc-900 border border-white/5 rounded-xl py-3.5 pl-12 pr-4 focus:outline-none focus:border-primary transition-all text-sm disabled:opacity-50 placeholder:text-zinc-700"
                   />
                 </div>
               </div>
@@ -104,9 +155,12 @@ export const AuthPage = () => {
                   <Asterisk className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
                   <input 
                     type="password" 
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
                     disabled={isAuthenticating}
                     placeholder="••••••••"
-                    className="w-full bg-zinc-900 border border-white/5 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:border-primary transition-all text-sm disabled:opacity-50"
+                    className="w-full bg-zinc-900 border border-white/5 rounded-xl py-3.5 pl-12 pr-4 focus:outline-none focus:border-primary transition-all text-sm disabled:opacity-50 placeholder:text-zinc-700"
                   />
                 </div>
               </div>
@@ -117,9 +171,9 @@ export const AuthPage = () => {
                     type="button"
                     disabled={isAuthenticating}
                     onClick={() => setShowBonusField(!showBonusField)}
-                    className="text-xs text-primary font-bold hover:underline disabled:opacity-50"
+                    className="text-[10px] text-zinc-600 font-bold uppercase tracking-widest hover:text-primary transition-colors disabled:opacity-50"
                    >
-                     {showBonusField ? '- Hide Bonus Code' : '+ Have a referral/bonus code?'}
+                     {showBonusField ? '- Hide Referral' : '+ Referral Code?'}
                    </button>
                    <AnimatePresence>
                     {showBonusField && (
@@ -131,9 +185,11 @@ export const AuthPage = () => {
                       >
                         <input 
                           type="text" 
+                          value={refCode}
+                          onChange={(e) => setRefCode(e.target.value)}
                           disabled={isAuthenticating}
-                          placeholder="ENTER_CODE"
-                          className="w-full bg-primary/5 border border-primary/20 rounded-xl py-2 px-4 text-sm focus:outline-none focus:border-primary uppercase font-mono tracking-widest disabled:opacity-50"
+                          placeholder="ENTER_REFERRAL_CODE"
+                          className="w-full bg-primary/5 border border-primary/20 rounded-xl py-2.5 px-4 text-xs focus:outline-none focus:border-primary uppercase font-mono tracking-widest disabled:opacity-50 placeholder:text-zinc-800"
                         />
                       </motion.div>
                     )}
@@ -144,35 +200,42 @@ export const AuthPage = () => {
               <button 
                 type="submit"
                 disabled={isAuthenticating}
-                className="w-full bg-primary py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-primary/90 disabled:opacity-50 transition-all shadow-lg shadow-primary/20 text-white"
+                className="w-full bg-primary py-4 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-primary/90 disabled:opacity-50 transition-all shadow-xl shadow-primary/20 text-white active:scale-95 text-sm uppercase tracking-widest"
               >
-                {isLogin ? 'Login' : 'Create Account'}
-                <ArrowRight className="w-4 h-4" />
+                {isAuthenticating ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <>
+                    {isLogin ? 'Login To Dashboard' : 'Create My Account'}
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
               </button>
             </form>
 
-            <div className="text-center pt-4">
+            <div className="text-center pt-6">
                <button 
                 disabled={isAuthenticating}
-                onClick={() => setIsLogin(!isLogin)}
-                className="text-sm text-zinc-500 hover:text-white transition-colors disabled:opacity-50"
+                onClick={() => { setIsLogin(!isLogin); clearAuthError(); }}
+                className="text-xs text-zinc-600 hover:text-zinc-400 transition-colors disabled:opacity-50 uppercase tracking-[0.1em] font-bold"
                >
                  {isLogin ? "Don't have an account? " : "Already have an account? "}
-                 <span className="text-primary font-bold">{isLogin ? 'Sign Up' : 'Login'}</span>
+                 <span className="text-primary">{isLogin ? 'SIGN UP' : 'LOGIN'}</span>
                </button>
             </div>
           </div>
 
           <div className="pt-12 text-center">
-            <div className="flex items-center justify-center gap-6 text-[10px] uppercase font-bold tracking-widest text-zinc-600">
-              <Link to="/legal" className="hover:text-zinc-400">Terms of Service</Link>
-              <Link to="/legal" className="hover:text-zinc-400">Privacy Policy</Link>
-              <Link to="/legal" className="hover:text-zinc-400">Help Center</Link>
+            <div className="flex items-center justify-center gap-6 text-[10px] uppercase font-bold tracking-widest text-zinc-700">
+              <Link to="/legal" className="hover:text-zinc-500">Terms</Link>
+              <Link to="/legal" className="hover:text-zinc-500">Privacy</Link>
+              <Link to="/legal" className="hover:text-zinc-500">Support</Link>
             </div>
-            <p className="text-[10px] text-zinc-700 mt-4 uppercase tracking-[0.2em]">© 2026 Dgamers International</p>
+            <p className="text-[10px] text-zinc-800 mt-4 uppercase tracking-[0.3em] font-black">© 2026 Dgamers</p>
           </div>
         </div>
       </div>
     </div>
   );
 };
+

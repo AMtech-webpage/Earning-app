@@ -32,8 +32,8 @@ service cloud.firestore {
 
     function isValidUser(data) {
       return data.uid == request.auth.uid 
-        && data.username is string && data.username.size() >= 3 && data.username.size() <= 32
-        && data.email is string && data.email.size() <= 100
+        && data.username is string && data.username.size() >= 2 && data.username.size() <= 64
+        && data.email is string && data.email.size() <= 128
         && data.coins is number && data.coins >= 0
         && data.tier in ['bronze', 'silver', 'gold', 'platinum']
         && data.createdAt is timestamp;

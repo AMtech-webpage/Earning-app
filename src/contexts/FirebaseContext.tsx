@@ -1,5 +1,13 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User as FirebaseUser, onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth';
+import { 
+  User as FirebaseUser, 
+  onAuthStateChanged, 
+  signInWithPopup, 
+  signOut,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  updateProfile
+} from 'firebase/auth';
 import { doc, onSnapshot, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
 import { auth, db, googleProvider, handleFirestoreError, OperationType } from '../lib/firebase';
 
@@ -23,6 +31,8 @@ interface FirebaseContextType {
   isAuthenticating: boolean;
   authError: string | null;
   signIn: () => Promise<void>;
+  signUpWithEmail: (email: string, pass: string, username: string) => Promise<void>;
+  signInWithEmail: (email: string, pass: string) => Promise<void>;
   logout: () => Promise<void>;
   awardCoins: (amount: number, description: string) => Promise<void>;
   clearAuthError: () => void;
@@ -58,9 +68,14 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         const snap = await getDoc(profileRef);
         if (!snap.exists()) {
           const referrerId = localStorage.getItem('dgamers_ref');
+          
+          let baseUsername = firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Gamer';
+          if (baseUsername.length < 3) baseUsername = `${baseUsername}_player`;
+          if (baseUsername.length > 32) baseUsername = baseUsername.substring(0, 32);
+
           const newProfile: any = {
             uid: firebaseUser.uid,
-            username: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Gamer',
+            username: baseUsername,
             email: firebaseUser.email || '',
             coins: 0,
             tier: 'bronze',
@@ -124,8 +139,47 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         message = "Sign in was cancelled.";
       } else if (error.code === 'auth/network-request-failed') {
         message = "Network error. Please check your connection.";
+      } else {
+        message = error.message;
       }
       setAuthError(message);
+    } finally {
+      setIsAuthenticating(false);
+    }
+  };
+
+  const signUpWithEmail = async (email: string, pass: string, username: string) => {
+    setIsAuthenticating(true);
+    setAuthError(null);
+    try {
+      if (username.length < 3) throw new Error("Username must be at least 3 characters.");
+      const cred = await createUserWithEmailAndPassword(auth, email, pass);
+      await updateProfile(cred.user, { displayName: username });
+    } catch (error: any) {
+      console.error("Sign up failed", error);
+      let message = error.message;
+      if (error.code === 'auth/email-already-in-use') message = "This email is already registered.";
+      if (error.code === 'auth/weak-password') message = "Password should be at least 6 characters.";
+      setAuthError(message);
+      throw error;
+    } finally {
+      setIsAuthenticating(false);
+    }
+  };
+
+  const signInWithEmail = async (email: string, pass: string) => {
+    setIsAuthenticating(true);
+    setAuthError(null);
+    try {
+      await signInWithEmailAndPassword(auth, email, pass);
+    } catch (error: any) {
+      console.error("Sign in failed", error);
+      let message = error.message;
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+        message = "Invalid email or password.";
+      }
+      setAuthError(message);
+      throw error;
     } finally {
       setIsAuthenticating(false);
     }
@@ -163,25 +217,30 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         lastLoginAt: serverTimestamp()
       }, { merge: true });
 
-      // 3. Handle Referral Commission (Client-side simulation)
-      // In a real app, this would be a Cloud Function triggered by the transaction.
-      // Here we simulate by showing the intent or attempting if rules allowed.
-      if (profile.referrerId) {
-        console.log(`Rewarding referrer ${profile.referrerId} with ${amount * 0.1} coins`);
-        // Note: This operation will likely FAIL due to security rules (cannot write to another user's profile)
-        // unless we specifically add a 'referral_bonus' collection User B can write to.
-      }
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, `users/${user.uid}/transactions`);
     }
   };
 
   return (
-    <FirebaseContext.Provider value={{ user, profile, loading, isAuthenticating, authError, signIn, logout, awardCoins, clearAuthError }}>
+    <FirebaseContext.Provider value={{ 
+      user, 
+      profile, 
+      loading, 
+      isAuthenticating, 
+      authError, 
+      signIn, 
+      signUpWithEmail,
+      signInWithEmail,
+      logout, 
+      awardCoins, 
+      clearAuthError 
+    }}>
       {children}
     </FirebaseContext.Provider>
   );
 };
+
 
 export const useFirebase = () => {
   const context = useContext(FirebaseContext);
