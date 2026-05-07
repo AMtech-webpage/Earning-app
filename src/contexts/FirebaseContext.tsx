@@ -50,7 +50,7 @@ interface FirebaseContextType {
   signInWithEmail: (email: string, pass: string) => Promise<void>;
   logout: () => Promise<void>;
   awardCoins: (amount: number, description: string) => Promise<void>;
-  requestWithdrawal: (amount: number, method: string) => Promise<void>;
+  requestWithdrawal: (amount: number, method: string, details?: any) => Promise<void>;
   updateProfileData: (data: Partial<UserProfile>) => Promise<void>;
   checkUsernameAvailability: (username: string) => Promise<boolean>;
   clearAuthError: () => void;
@@ -362,7 +362,7 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   };
 
-  const requestWithdrawal = async (amountInCoins: number, method: string) => {
+  const requestWithdrawal = async (amountInCoins: number, method: string, details: any = {}) => {
     if (!user || !profile) return;
     if (profile.coins < amountInCoins) throw new Error("Insufficient balance.");
 
@@ -373,7 +373,8 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         body: JSON.stringify({
           uid: user.uid,
           amount: amountInCoins,
-          method: method
+          method: method,
+          details: details
         })
       });
 

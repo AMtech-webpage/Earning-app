@@ -1236,6 +1236,8 @@ const WithdrawPage = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [status, setStatus] = useState<{ type: 'success' | 'error', msg: string } | null>(null);
 
+  const [details, setDetails] = useState<Record<string, string>>({});
+
   const availableCoins = profile?.coins || 0;
   const ngnAmount = availableCoins; 
   const progress = Math.min((availableCoins / 1000) * 100, 100);
@@ -1243,6 +1245,20 @@ const WithdrawPage = () => {
   const handleWithdraw = async () => {
     if (!selectedMethod) {
       setStatus({ type: 'error', msg: 'Please select a withdrawal method.' });
+      return;
+    }
+
+    // Validate details based on method
+    if (selectedMethod === 'bank' && (!details.bankName || !details.accNumber)) {
+      setStatus({ type: 'error', msg: 'Please provide bank details.' });
+      return;
+    }
+    if (selectedMethod === 'btc' && !details.address) {
+      setStatus({ type: 'error', msg: 'Please provide BTC wallet address.' });
+      return;
+    }
+    if ((selectedMethod === 'opay' || selectedMethod === 'airtime') && !details.phone) {
+      setStatus({ type: 'error', msg: 'Please provide phone number.' });
       return;
     }
 
@@ -1260,9 +1276,10 @@ const WithdrawPage = () => {
     setIsProcessing(true);
     setStatus(null);
     try {
-      await requestWithdrawal(coinsToWithdraw, selectedMethod);
+      await requestWithdrawal(coinsToWithdraw, selectedMethod, details);
       setStatus({ type: 'success', msg: `Withdrawal of ₦${coinsToWithdraw.toLocaleString()} initiated successfully!` });
       setAmount('1000');
+      setDetails({});
     } catch (err: any) {
       console.error(err);
       setStatus({ type: 'error', msg: 'Failed to process withdrawal. Please try again.' });
@@ -1313,6 +1330,59 @@ const WithdrawPage = () => {
                     className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-lg font-black font-display focus:outline-none focus:border-primary/50 text-white placeholder:text-zinc-800"
                    />
                  </div>
+
+                 {/* Dynamic Details Fields */}
+                 {selectedMethod === 'bank' && (
+                   <div className="space-y-3">
+                     <div className="space-y-1.5">
+                       <label className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest block px-1">Bank Name</label>
+                       <input 
+                        type="text" 
+                        value={details.bankName || ''}
+                        onChange={(e) => setDetails({...details, bankName: e.target.value})}
+                        placeholder="e.g. Zenith Bank"
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-primary/50 text-white"
+                       />
+                     </div>
+                     <div className="space-y-1.5">
+                       <label className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest block px-1">Account Number</label>
+                       <input 
+                        type="text" 
+                        value={details.accNumber || ''}
+                        onChange={(e) => setDetails({...details, accNumber: e.target.value})}
+                        placeholder="10 Digits"
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-primary/50 text-white"
+                       />
+                     </div>
+                   </div>
+                 )}
+
+                 {selectedMethod === 'btc' && (
+                   <div className="space-y-1.5">
+                     <label className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest block px-1">BTC Wallet Address</label>
+                     <input 
+                      type="text" 
+                      value={details.address || ''}
+                      onChange={(e) => setDetails({...details, address: e.target.value})}
+                      placeholder="Bitcoin Address"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-primary/50 text-white"
+                     />
+                   </div>
+                 )}
+
+                 {(selectedMethod === 'opay' || selectedMethod === 'airtime') && (
+                   <div className="space-y-1.5">
+                     <label className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest block px-1">Phone Number</label>
+                     <input 
+                      type="text" 
+                      value={details.phone || ''}
+                      onChange={(e) => setDetails({...details, phone: e.target.value})}
+                      placeholder="080XXXXXXXX"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-primary/50 text-white"
+                     />
+                   </div>
+                 )}
+
                  <button 
                   onClick={handleWithdraw}
                   disabled={isProcessing || availableCoins < 500}

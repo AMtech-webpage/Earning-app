@@ -38,6 +38,11 @@ async function startServer() {
   });
 
   // --- REWARDS PLATFORM LOGIC ---
+  
+  // Trustpilot verification
+  app.get("/3204f969-3b22-48a9-a271-9b49d7c8d43f.html", (req, res) => {
+    res.send("3204f969-3b22-48a9-a271-9b49d7c8d43f");
+  });
 
   /**
    * 1. USER PROFILE & INITIALIZATION
